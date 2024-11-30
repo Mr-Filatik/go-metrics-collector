@@ -1,3 +1,11 @@
+# Metrics collector in Go language (go-metrics-collector)
+
+Metrics and alerting service.
+
+## Developer
+
+The project was developed by Vladislav Filatov.
+
 # go-musthave-metrics-tpl
 
 Шаблон репозитория для трека «Сервер сбора метрик и алертинга».
