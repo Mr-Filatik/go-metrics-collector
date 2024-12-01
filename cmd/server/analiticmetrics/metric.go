@@ -1,4 +1,4 @@
-package analitic_metrics
+package analiticmetrics
 
 type MetricType string
 
