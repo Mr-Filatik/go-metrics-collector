@@ -12,8 +12,8 @@ var stor storages.Storage = &storages.MemStorage{}
 
 func main() {
 	endpoint := "127.0.0.1:8080"
-	stor.Create(analiticmetrics.Gauge, "test_gauge", "0")
-	stor.Create(analiticmetrics.Counter, "test_counter", "0")
+	stor.Create(analiticmetrics.Gauge, "testGauge", "0")
+	stor.Create(analiticmetrics.Counter, "testCounter", "0")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /update/{type}/{name}/{value}", updateHandle)
