@@ -43,7 +43,7 @@ func updateHandle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := stor.Update(t, n, v); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	case analiticmetrics.Counter:
@@ -52,7 +52,7 @@ func updateHandle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := stor.Update(t, n, v); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	default:
