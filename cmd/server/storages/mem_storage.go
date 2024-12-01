@@ -67,7 +67,7 @@ func (s *MemStorage) Update(t analitic_metrics.MetricType, n string, v string) e
 					return nil
 				} else {
 					log.Printf("Update storage item error: Incorrect metric value.")
-					return errors.New("Incorrect metric value")
+					return errors.New("incorrect metric value")
 				}
 			case analitic_metrics.Counter:
 				if num, err := strconv.ParseInt(v, 10, 64); err == nil {
@@ -79,7 +79,7 @@ func (s *MemStorage) Update(t analitic_metrics.MetricType, n string, v string) e
 					}
 				} else {
 					log.Printf("Update storage item error: Incorrect metric value.")
-					return errors.New("Incorrect metric value")
+					return errors.New("incorrect metric value")
 				}
 			}
 		}
