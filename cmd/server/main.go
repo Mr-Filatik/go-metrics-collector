@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
 
@@ -14,15 +15,17 @@ import (
 var stor storages.Storage = &storages.MemStorage{}
 
 func main() {
-	endpoint := "127.0.0.1:8080"
+
+	endpoint := flag.String("a", "localhost:8080", "HTTP server endpoint")
+	flag.Parse()
 
 	r := chi.NewRouter()
 	r.Get("/", allInfoHandle)
 	r.Get("/value/{type}/{name}", getHandle)
 	r.Post("/update/{type}/{name}/{value}", updateHandle)
 
-	log.Printf("Start server on endpoint %v.", endpoint)
-	err := http.ListenAndServe(endpoint, r)
+	log.Printf("Start server on endpoint %v.", *endpoint)
+	err := http.ListenAndServe(*endpoint, r)
 	if err != nil {
 		panic(err)
 	}
