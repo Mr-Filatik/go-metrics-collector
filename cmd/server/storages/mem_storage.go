@@ -9,7 +9,8 @@ import (
 )
 
 type Storage interface {
-	//Get() StorageItem
+	GetValue(t analiticmetrics.MetricType, n string) *string
+	GetAll() []*StorageItem
 	Update(t analiticmetrics.MetricType, n string, v string) error
 	Create(t analiticmetrics.MetricType, n string, v string)
 	Contains(t analiticmetrics.MetricType, n string) bool
@@ -23,6 +24,21 @@ type StorageItem struct {
 
 type MemStorage struct {
 	Values []*StorageItem
+}
+
+func (s *MemStorage) GetValue(t analiticmetrics.MetricType, n string) *string {
+	for i := range s.Values {
+		item := s.Values[i]
+		if *item.Type == t && *item.Name == n {
+			return item.Value
+		}
+	}
+	res := "0"
+	return &res
+}
+
+func (s *MemStorage) GetAll() []*StorageItem {
+	return s.Values
 }
 
 func (s *MemStorage) Create(t analiticmetrics.MetricType, n string, v string) {
