@@ -47,7 +47,7 @@ func main() {
 	endpoint := "http://127.0.0.1:8080"
 	//pollInterval := 2
 	//repostInterval := 10
-	var metr Metric = Metric{PollCount: 0}
+	metr := Metric{PollCount: 0}
 	go Refresh(&metr)
 	Send(&metr, endpoint)
 }
