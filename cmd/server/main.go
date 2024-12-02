@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/analiticmetrics"
 	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storages"
@@ -16,7 +17,11 @@ var stor storages.Storage = &storages.MemStorage{}
 
 func main() {
 
-	endpoint := flag.String("a", "localhost:8080", "HTTP server endpoint")
+	endpointEnv := os.Getenv("ADDRESS")
+	endpoint := &endpointEnv
+	if *endpoint == "" {
+		endpoint = flag.String("a", "localhost:8080", "HTTP server endpoint")
+	}
 	flag.Parse()
 
 	r := chi.NewRouter()
