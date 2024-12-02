@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"math/rand"
 	"runtime"
@@ -44,17 +45,19 @@ type Metric struct {
 
 func main() {
 
-	endpoint := "http://127.0.0.1:8080"
-	//pollInterval := 2
-	//repostInterval := 10
+	endpoint := flag.String("a", "localhost:8080", "HTTP server endpoint")
+	reportInterval := flag.Int64("r", 10, "Report interval")
+	pollInterval := flag.Int64("p", 2, "Poll interval")
+	flag.Parse()
+
 	metr := Metric{PollCount: 0}
-	go Refresh(&metr)
-	Send(&metr, endpoint)
+	go Refresh(&metr, *pollInterval)
+	Send(&metr, "http://"+*endpoint, *reportInterval)
 }
 
-func Refresh(m *Metric) {
+func Refresh(m *Metric, pollInterval int64) {
 	for {
-		time.Sleep(2 * time.Second)
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 		RefreshMetrics(m)
 	}
 }
@@ -77,9 +80,9 @@ func SendRequest(c *resty.Client, endpoint string, metricType string, metricName
 	return nil
 }
 
-func Send(m *Metric, endpoint string) {
+func Send(m *Metric, endpoint string, reportInterval int64) {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(time.Duration(reportInterval) * time.Second)
 
 		client := resty.New()
 		SendRequest(client, endpoint, "gauge", "Alloc", strconv.FormatFloat(m.Alloc, 'f', -1, 64))
