@@ -18,7 +18,10 @@ func main() {
 	stor.Create(analiticmetrics.Gauge, "testGauge", "0")
 	stor.Create(analiticmetrics.Counter, "testCounter", "0")
 	stor.Create(analiticmetrics.Counter, "testSetGet54", "0")
+	stor.Create(analiticmetrics.Counter, "testSetGet207", "0")
+	stor.Create(analiticmetrics.Gauge, "testSetGet106", "0")
 	stor.Create(analiticmetrics.Gauge, "testSetGet172", "0")
+	stor.Create(analiticmetrics.Gauge, "testSetGet207", "0")
 
 	stor.Create(analiticmetrics.Gauge, "Alloc", "0")
 	stor.Create(analiticmetrics.Gauge, "BuckHashSys", "0")
