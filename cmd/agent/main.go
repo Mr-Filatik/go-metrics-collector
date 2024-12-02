@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"math/rand"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -45,9 +46,27 @@ type Metric struct {
 
 func main() {
 
-	endpoint := flag.String("a", "localhost:8080", "HTTP server endpoint")
-	reportInterval := flag.Int64("r", 10, "Report interval")
-	pollInterval := flag.Int64("p", 2, "Poll interval")
+	endpointEnv := os.Getenv("ADDRESS")
+	var endpoint *string
+	if endpointEnv == "" {
+		endpoint = flag.String("a", "localhost:8080", "HTTP server endpoint")
+	}
+	reportIntervalEnv := os.Getenv("REPORT_INTERVAL")
+	rnum, rerr := strconv.ParseInt(reportIntervalEnv, 10, 64)
+	var reportInterval *int64
+	if reportIntervalEnv == "" || rerr != nil {
+		reportInterval = flag.Int64("r", 10, "Report interval")
+	} else {
+		reportInterval = &rnum
+	}
+	pollIntervalEnv := os.Getenv("POLL_INTERVAL")
+	pnum, perr := strconv.ParseInt(pollIntervalEnv, 10, 64)
+	var pollInterval *int64
+	if pollIntervalEnv == "" || perr != nil {
+		pollInterval = flag.Int64("p", 2, "Poll interval")
+	} else {
+		pollInterval = &pnum
+	}
 	flag.Parse()
 
 	metr := Metric{PollCount: 0}
