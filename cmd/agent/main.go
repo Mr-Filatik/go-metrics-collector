@@ -1,14 +1,13 @@
 package main
 
 import (
-	"io"
 	"log"
 	"math/rand"
-	"net/http"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type Metric struct {
@@ -44,6 +43,7 @@ type Metric struct {
 }
 
 func main() {
+
 	endpoint := "http://127.0.0.1:8080"
 	//pollInterval := 2
 	//repostInterval := 10
@@ -59,23 +59,21 @@ func Refresh(m *Metric) {
 	}
 }
 
-func SendRequest(c *http.Client, endpoint string, metricType string, metricName string, metricValue string) error {
+func SendRequest(c *resty.Client, endpoint string, metricType string, metricName string, metricValue string) error {
 
 	address := endpoint + "/update/" + metricType + "/" + metricName + "/" + metricValue
-	req, _ := http.NewRequest(
-		http.MethodPost, address, nil,
-	)
-	req.Header.Add("Content-Type", " text/plain")
 
 	log.Printf("Response to %v.", address)
-	resp, err := c.Do(req)
+
+	resp, err := c.R().
+		SetHeader("Content-Type", " text/plain").
+		Post(address)
+
 	if err != nil {
 		log.Printf("Error on response: %v.", err.Error())
 		return err
 	}
-	log.Printf("Response is done. StatusCode: %v.", resp.StatusCode)
-	defer resp.Body.Close()
-	io.Copy(os.Stdout, resp.Body)
+	log.Printf("Response is done. StatusCode: %v.", resp.Status())
 	return nil
 }
 
@@ -83,7 +81,7 @@ func Send(m *Metric, endpoint string) {
 	for {
 		time.Sleep(10 * time.Second)
 
-		client := &http.Client{}
+		client := resty.New()
 		SendRequest(client, endpoint, "gauge", "Alloc", strconv.FormatFloat(m.Alloc, 'f', -1, 64))
 		SendRequest(client, endpoint, "gauge", "BuckHashSys", strconv.FormatFloat(m.BuckHashSys, 'f', -1, 64))
 		SendRequest(client, endpoint, "gauge", "Frees", strconv.FormatFloat(m.Frees, 'f', -1, 64))
