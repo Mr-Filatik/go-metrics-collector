@@ -18,9 +18,11 @@ var stor storages.Storage = &storages.MemStorage{}
 func main() {
 
 	endpointEnv := os.Getenv("ADDRESS")
-	endpoint := &endpointEnv
-	if *endpoint == "" {
+	var endpoint *string
+	if endpointEnv == "" {
 		endpoint = flag.String("a", "localhost:8080", "HTTP server endpoint")
+	} else {
+		endpoint = &endpointEnv
 	}
 	flag.Parse()
 

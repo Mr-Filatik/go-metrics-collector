@@ -50,6 +50,8 @@ func main() {
 	var endpoint *string
 	if endpointEnv == "" {
 		endpoint = flag.String("a", "localhost:8080", "HTTP server endpoint")
+	} else {
+		endpoint = &endpointEnv
 	}
 	reportIntervalEnv := os.Getenv("REPORT_INTERVAL")
 	rnum, rerr := strconv.ParseInt(reportIntervalEnv, 10, 64)
