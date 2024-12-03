@@ -1,4 +1,4 @@
-package repositoryAbstract
+package repositoryabstract
 
 import "github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
 

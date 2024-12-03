@@ -1,4 +1,4 @@
-package storageAbstract
+package storageabstract
 
 import (
 	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
