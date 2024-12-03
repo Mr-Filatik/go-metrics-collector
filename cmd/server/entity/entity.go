@@ -1,4 +1,10 @@
-package analiticmetrics
+package entity
+
+type Metric struct {
+	Type  MetricType
+	Name  string
+	Value string
+}
 
 type MetricType string
 

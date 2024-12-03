@@ -2,37 +2,32 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/analiticmetrics"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storages"
-
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/config"
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage"
 	"github.com/go-chi/chi/v5"
 )
 
-var stor storages.Storage = &storages.MemStorage{}
+var stor storage.MemStorage
 
 func main() {
 
-	endpointEnv := os.Getenv("ADDRESS")
-	var endpoint *string
-	if endpointEnv == "" {
-		endpoint = flag.String("a", "localhost:8080", "HTTP server endpoint")
-	} else {
-		endpoint = &endpointEnv
-	}
-	flag.Parse()
+	config := config.Initialize()
+	repo := repository.MemRepository{}
+	stor = storage.MemStorage{}
+	stor.SetRepository(&repo)
 
 	r := chi.NewRouter()
 	r.Get("/", allInfoHandle)
 	r.Get("/value/{type}/{name}", getHandle)
 	r.Post("/update/{type}/{name}/{value}", updateHandle)
 
-	log.Printf("Start server on endpoint %v.", *endpoint)
-	err := http.ListenAndServe(*endpoint, r)
+	log.Printf("Start server on endpoint %v.", config.ServerAddress)
+	err := http.ListenAndServe(config.ServerAddress, r)
 	if err != nil {
 		panic(err)
 	}
@@ -61,26 +56,21 @@ func getHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := (analiticmetrics.MetricType)(r.PathValue("type"))
+	t := (entity.MetricType)(r.PathValue("type"))
 	n := r.PathValue("name")
 
-	switch t {
-	case analiticmetrics.Gauge:
-		if !stor.Contains(t, n) {
-			http.Error(w, "Incorrect metric name", http.StatusNotFound)
+	val, err := stor.Get(t, n)
+	if err != nil {
+		if err.Error() == "metric not found" {
+			http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(*stor.GetValue(t, n)))
-	case analiticmetrics.Counter:
-		if !stor.Contains(t, n) {
-			http.Error(w, "Incorrect metric name", http.StatusNotFound)
+		if err.Error() == "invalid metric type" {
+			http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		w.Write([]byte(*stor.GetValue(t, n)))
-	default:
-		http.Error(w, "Incorrect metric type", http.StatusBadRequest)
-		return
 	}
+	w.Write([]byte(val))
 }
 
 func updateHandle(w http.ResponseWriter, r *http.Request) {
@@ -90,31 +80,19 @@ func updateHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := (analiticmetrics.MetricType)(r.PathValue("type"))
+	t := (entity.MetricType)(r.PathValue("type"))
 	n := r.PathValue("name")
 	v := r.PathValue("value")
 
-	switch t {
-	case analiticmetrics.Gauge:
-		if !stor.Contains(t, n) {
-			stor.Create(analiticmetrics.Gauge, n, v)
+	err := stor.CreateOrUpdate(t, n, v)
+	if err != nil {
+		if err.Error() == "invalid metric value" {
+			http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := stor.Update(t, n, v); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err.Error() == "invalid metric type" {
+			http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-	case analiticmetrics.Counter:
-		if !stor.Contains(t, n) {
-			stor.Create(analiticmetrics.Counter, n, v)
-			return
-		}
-		if err := stor.Update(t, n, v); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	default:
-		http.Error(w, "Incorrect metric type", http.StatusBadRequest)
-		return
 	}
 }
