@@ -6,16 +6,16 @@ import (
 	"strconv"
 
 	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository/abstract"
 )
 
 type MemStorage struct {
-	repository *repository.MemRepository
+	repository abstract.Repository
 }
 
-func (s *MemStorage) SetRepository(r *repository.MemRepository) {
+func New(r abstract.Repository) *MemStorage {
 
-	s.repository = r
+	return &MemStorage{repository: r}
 }
 
 func (s *MemStorage) GetAll() []entity.Metric {

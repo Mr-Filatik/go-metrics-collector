@@ -12,14 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var stor storage.MemStorage
+var stor *storage.MemStorage
 
 func main() {
 
 	config := config.Initialize()
-	repo := repository.MemRepository{}
-	stor = storage.MemStorage{}
-	stor.SetRepository(&repo)
+	repo := repository.New()
+	stor = storage.New(repo)
 
 	r := chi.NewRouter()
 	r.Get("/", allInfoHandle)

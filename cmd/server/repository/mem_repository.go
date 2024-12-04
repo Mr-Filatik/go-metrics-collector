@@ -10,6 +10,11 @@ type MemRepository struct {
 	datas []entity.Metric
 }
 
+func New() *MemRepository {
+
+	return &MemRepository{datas: make([]entity.Metric, 0)}
+}
+
 func (r *MemRepository) GetAll() []entity.Metric {
 
 	if r.datas != nil {
