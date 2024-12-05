@@ -20,18 +20,18 @@ func main() {
 
 func RunUpdater(m *metric.Metric, pollInterval int64) {
 
-	for {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
+	t := time.Tick(time.Duration(pollInterval) * time.Second)
+
+	for range t {
 		m.Update()
 	}
 }
 
 func RunReporter(m *metric.Metric, endpoint string, reportInterval int64) {
 
-	for {
-		time.Sleep(time.Duration(reportInterval) * time.Second)
-		//m.Log()
+	t := time.Tick(time.Duration(reportInterval) * time.Second)
 
+	for range t {
 		client := resty.New()
 		err := m.Foreach(func(metricType, metricName, metricValue string) error {
 			address := endpoint + "/update/" + metricType + "/" + metricName + "/" + metricValue
