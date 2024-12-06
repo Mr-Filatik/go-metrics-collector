@@ -24,7 +24,12 @@ func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		w.Write(res)
+		_, wErr := w.Write(res)
+		if wErr != nil {
+			log.Printf("Unexpected server error: %v.", wErr.Error())
+			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -36,7 +41,7 @@ func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		t := (entity.MetricType)(r.PathValue("type"))
+		t := entity.MetricType(r.PathValue("type"))
 		n := r.PathValue("name")
 
 		val, err := s.Get(t, n)
@@ -51,8 +56,17 @@ func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 				http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
+			log.Printf("Unexpected server error: %v.", err.Error())
+			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
+			return
 		}
-		w.Write([]byte(val))
+
+		_, wErr := w.Write([]byte(val))
+		if wErr != nil {
+			log.Printf("Unexpected server error: %v.", wErr.Error())
+			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -64,7 +78,7 @@ func UpdateMetricHandle(s storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		t := (entity.MetricType)(r.PathValue("type"))
+		t := entity.MetricType(r.PathValue("type"))
 		n := r.PathValue("name")
 		v := r.PathValue("value")
 

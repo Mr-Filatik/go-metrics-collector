@@ -84,36 +84,37 @@ func (metric *AgentMetrics) Update() {
 
 func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
 	list := make([]entity.Metric, 0)
-	list = append(list, addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "GCCPUFraction", strconv.FormatFloat(metric.GCCPUFraction, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "GCSys", strconv.FormatFloat(metric.GCSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapAlloc", strconv.FormatFloat(metric.HeapAlloc, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapIdle", strconv.FormatFloat(metric.HeapIdle, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapInuse", strconv.FormatFloat(metric.HeapInuse, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapObjects", strconv.FormatFloat(metric.HeapObjects, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapReleased", strconv.FormatFloat(metric.HeapReleased, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "HeapSys", strconv.FormatFloat(metric.HeapSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "LastGC", strconv.FormatFloat(metric.LastGC, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "Lookups", strconv.FormatFloat(metric.Lookups, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "MCacheInuse", strconv.FormatFloat(metric.MCacheInuse, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "MCacheSys", strconv.FormatFloat(metric.MCacheSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "MSpanInuse", strconv.FormatFloat(metric.MSpanInuse, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "MSpanSys", strconv.FormatFloat(metric.MSpanSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "Mallocs", strconv.FormatFloat(metric.Mallocs, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "NextGC", strconv.FormatFloat(metric.NextGC, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "NumForcedGC", strconv.FormatFloat(metric.NumForcedGC, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "NumGC", strconv.FormatFloat(metric.NumGC, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "OtherSys", strconv.FormatFloat(metric.OtherSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "PauseTotalNs", strconv.FormatFloat(metric.PauseTotalNs, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "StackInuse", strconv.FormatFloat(metric.StackInuse, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)))
-	list = append(list, addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)))
-
-	list = append(list, addMetric(entity.Counter, "PollCount", strconv.FormatInt(metric.PollCount, 10)))
+	list = append(list,
+		addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)),
+		addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)),
+		addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)),
+		addMetric(entity.Gauge, "GCCPUFraction", strconv.FormatFloat(metric.GCCPUFraction, 'f', -1, 64)),
+		addMetric(entity.Gauge, "GCSys", strconv.FormatFloat(metric.GCSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapAlloc", strconv.FormatFloat(metric.HeapAlloc, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapIdle", strconv.FormatFloat(metric.HeapIdle, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapInuse", strconv.FormatFloat(metric.HeapInuse, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapObjects", strconv.FormatFloat(metric.HeapObjects, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapReleased", strconv.FormatFloat(metric.HeapReleased, 'f', -1, 64)),
+		addMetric(entity.Gauge, "HeapSys", strconv.FormatFloat(metric.HeapSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "LastGC", strconv.FormatFloat(metric.LastGC, 'f', -1, 64)),
+		addMetric(entity.Gauge, "Lookups", strconv.FormatFloat(metric.Lookups, 'f', -1, 64)),
+		addMetric(entity.Gauge, "MCacheInuse", strconv.FormatFloat(metric.MCacheInuse, 'f', -1, 64)),
+		addMetric(entity.Gauge, "MCacheSys", strconv.FormatFloat(metric.MCacheSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "MSpanInuse", strconv.FormatFloat(metric.MSpanInuse, 'f', -1, 64)),
+		addMetric(entity.Gauge, "MSpanSys", strconv.FormatFloat(metric.MSpanSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "Mallocs", strconv.FormatFloat(metric.Mallocs, 'f', -1, 64)),
+		addMetric(entity.Gauge, "NextGC", strconv.FormatFloat(metric.NextGC, 'f', -1, 64)),
+		addMetric(entity.Gauge, "NumForcedGC", strconv.FormatFloat(metric.NumForcedGC, 'f', -1, 64)),
+		addMetric(entity.Gauge, "NumGC", strconv.FormatFloat(metric.NumGC, 'f', -1, 64)),
+		addMetric(entity.Gauge, "OtherSys", strconv.FormatFloat(metric.OtherSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "PauseTotalNs", strconv.FormatFloat(metric.PauseTotalNs, 'f', -1, 64)),
+		addMetric(entity.Gauge, "StackInuse", strconv.FormatFloat(metric.StackInuse, 'f', -1, 64)),
+		addMetric(entity.Gauge, "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)),
+		addMetric(entity.Gauge, "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)),
+		addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)),
+		addMetric(entity.Counter, "PollCount", strconv.FormatInt(metric.PollCount, 10)))
 	if isClearCounters {
 		metric.PollCount = 0
 	}

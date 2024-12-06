@@ -1,9 +1,9 @@
 package entity
 
 type Metric struct {
-	Type  MetricType
-	Name  string
-	Value string
+	Type  MetricType `json:"type"`
+	Name  string     `json:"name"`
+	Value string     `json:"value"`
 }
 
 type MetricType string

@@ -55,7 +55,11 @@ func (s *Storage) CreateOrUpdate(t entity.MetricType, n string, v string) error 
 
 	m, err := s.repository.Get(n)
 	if err != nil {
-		s.repository.Create(entity.Metric{Name: n, Type: t, Value: v})
+		cErr := s.repository.Create(entity.Metric{Name: n, Type: t, Value: v})
+		if cErr != nil {
+			log.Printf("Mem storage error: %v - %v.", "create for name error", n)
+			return errors.New("create for name error")
+		}
 		log.Printf("Create value: %v - %v.", n, v)
 	} else {
 		if t == m.Type {
@@ -80,7 +84,11 @@ func (s *Storage) updateMetric(currentMetric entity.Metric, newValue string) err
 func (s *Storage) updateGaugeMetric(currentMetric entity.Metric, newValue string) error {
 	if num, err := strconv.ParseFloat(newValue, 64); err == nil {
 		newValue = strconv.FormatFloat(num, 'f', -1, 64)
-		s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
+		uErr := s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
+		if uErr != nil {
+			log.Printf("Mem storage error: %v - %v.", "update for name error", currentMetric.Name)
+			return errors.New("update for name error")
+		}
 		log.Printf("Update value: %v - %v to %v.", currentMetric.Name, currentMetric.Value, newValue)
 		return nil
 	}
@@ -93,7 +101,11 @@ func (s *Storage) updateCounterMetric(currentMetric entity.Metric, newValue stri
 		if newnum, err2 := strconv.ParseInt(currentMetric.Value, 10, 64); err2 == nil {
 			newnum += nnum
 			newValue = strconv.FormatInt(newnum, 10)
-			s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
+			uErr := s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
+			if uErr != nil {
+				log.Printf("Mem storage error: %v - %v.", "update for name error", currentMetric.Name)
+				return errors.New("update for name error")
+			}
 			log.Printf("Update value: %v - %v to %v.", currentMetric.Name, currentMetric.Value, newValue)
 			return nil
 		}
