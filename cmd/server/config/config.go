@@ -19,7 +19,7 @@ func Initialize() *Config {
 		ServerAddress: defaultServerAddress,
 	}
 
-	argValue := flag.String("a", "test", "HTTP server endpoint")
+	argValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
 	flag.Parse()
 	if argValue != nil && *argValue != "" {
 		config.ServerAddress = *argValue
