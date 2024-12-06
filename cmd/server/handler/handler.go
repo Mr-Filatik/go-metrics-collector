@@ -19,16 +19,13 @@ func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
 
 		res, err := json.Marshal(s.GetAll())
 		if err != nil {
-			log.Printf("Unexpected server error: %v.", err.Error())
-			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
+			reportServerError(w, err, false)
 			return
 		}
 
 		_, wErr := w.Write(res)
 		if wErr != nil {
-			log.Printf("Unexpected server error: %v.", wErr.Error())
-			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
-			return
+			reportServerError(w, wErr, false)
 		}
 	}
 }
@@ -46,26 +43,16 @@ func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 
 		val, err := s.Get(t, n)
 		if err != nil {
-			if err.Error() == "metric not found" {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
-				return
+			if storage.IsExpectedError(err) {
+				reportServerError(w, err, true)
+			} else {
+				reportServerError(w, err, false)
 			}
-			if err.Error() == "invalid metric type" {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-			log.Printf("Unexpected server error: %v.", err.Error())
-			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
-			return
 		}
 
 		_, wErr := w.Write([]byte(val))
 		if wErr != nil {
-			log.Printf("Unexpected server error: %v.", wErr.Error())
-			http.Error(w, "Unexpected error.", http.StatusInternalServerError)
-			return
+			reportServerError(w, wErr, false)
 		}
 	}
 }
@@ -84,16 +71,21 @@ func UpdateMetricHandle(s storage.Storage) http.HandlerFunc {
 
 		err := s.CreateOrUpdate(t, n, v)
 		if err != nil {
-			if err.Error() == "invalid metric value" {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-			if err.Error() == "invalid metric type" {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
-				return
+			if storage.IsExpectedError(err) {
+				reportServerError(w, err, true)
+			} else {
+				reportServerError(w, err, false)
 			}
 		}
+	}
+}
+
+func reportServerError(w http.ResponseWriter, e error, isExpected bool) {
+	if isExpected {
+		log.Printf("Server error: %v.", e.Error())
+		http.Error(w, "Error: "+e.Error(), http.StatusBadRequest)
+	} else {
+		log.Printf("Unexpected server error: %v.", e.Error())
+		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
 	}
 }

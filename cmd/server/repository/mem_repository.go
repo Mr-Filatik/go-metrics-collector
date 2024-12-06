@@ -10,6 +10,10 @@ type MemRepository struct {
 	datas []entity.Metric
 }
 
+const (
+	ErrorMetricNotFound = "metric not found"
+)
+
 func New() *MemRepository {
 	return &MemRepository{datas: make([]entity.Metric, 0)}
 }
@@ -27,7 +31,7 @@ func (r *MemRepository) Get(name string) (entity.Metric, error) {
 			return v, nil
 		}
 	}
-	return entity.Metric{}, errors.New("metric not found")
+	return entity.Metric{}, errors.New(ErrorMetricNotFound)
 }
 
 func (r *MemRepository) Create(e entity.Metric) error {
