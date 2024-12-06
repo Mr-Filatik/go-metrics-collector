@@ -42,7 +42,7 @@ func Initialize() *Config {
 
 	envEndpValue, isEndpValue := os.LookupEnv("ADDRESS")
 	if isEndpValue && envEndpValue != "" {
-		config.ServerAddress = envEndpValue
+		config.ServerAddress = "http://" + envEndpValue
 	}
 	envRepValue, isRepValue := os.LookupEnv("REPORT_INTERVAL")
 	if isRepValue && envRepValue != "" {
