@@ -6,7 +6,6 @@ import (
 )
 
 func TestUpdateHandler(t *testing.T) {
-
 	testCases := []struct {
 		method       string
 		path         string

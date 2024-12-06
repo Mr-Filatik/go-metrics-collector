@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	config := config.Initialize()
 	metrics := metric.New()
 
@@ -19,7 +18,6 @@ func main() {
 }
 
 func RunUpdater(m *metric.AgentMetrics, pollInterval int64) {
-
 	t := time.Tick(time.Duration(pollInterval) * time.Second)
 
 	for range t {
@@ -28,7 +26,6 @@ func RunUpdater(m *metric.AgentMetrics, pollInterval int64) {
 }
 
 func RunReporter(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
-
 	t := time.Tick(time.Duration(reportInterval) * time.Second)
 
 	for range t {

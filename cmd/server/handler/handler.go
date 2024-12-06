@@ -10,7 +10,6 @@ import (
 )
 
 func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			log.Printf("Invalid request type %v, needed GET.", r.Method)
@@ -30,7 +29,6 @@ func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
 }
 
 func GetMetricHandle(s storage.Storage) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			log.Printf("Invalid request type %v, needed GET.", r.Method)
@@ -59,7 +57,6 @@ func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 }
 
 func UpdateMetricHandle(s storage.Storage) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			log.Printf("Invalid request type %v, needed POST.", r.Method)

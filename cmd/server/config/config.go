@@ -14,7 +14,6 @@ type Config struct {
 }
 
 func Initialize() *Config {
-
 	config := Config{
 		ServerAddress: defaultServerAddress,
 	}

@@ -42,13 +42,11 @@ type AgentMetrics struct {
 }
 
 func New() *AgentMetrics {
-
 	metrics := AgentMetrics{PollCount: 0}
 	return &metrics
 }
 
 func (metric *AgentMetrics) Update() {
-
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 	metric.Alloc = float64(mem.Alloc)
@@ -85,7 +83,6 @@ func (metric *AgentMetrics) Update() {
 }
 
 func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
-
 	list := make([]entity.Metric, 0)
 	list = append(list, addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)))
 	list = append(list, addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)))
@@ -124,12 +121,10 @@ func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
 }
 
 func addMetric(t entity.MetricType, n string, v string) entity.Metric {
-
 	return entity.Metric{Type: t, Name: n, Value: v}
 }
 
 func (metric *AgentMetrics) Log() {
-
 	log.Printf("Log all metrics:")
 	log.Printf("- Alloc: %v.", metric.Alloc)
 	log.Printf("- BuckHashSys: %v.", metric.BuckHashSys)

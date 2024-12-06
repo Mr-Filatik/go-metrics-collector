@@ -19,7 +19,6 @@ type Config struct {
 }
 
 func Initialize() *Config {
-
 	config := Config{
 		ServerAddress:  "http://" + defaultServerAddress,
 		PollInterval:   defaultPollInterval,

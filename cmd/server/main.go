@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	config := config.Initialize()
 	repo := repository.New()
 	stor := storage.New(repo)
