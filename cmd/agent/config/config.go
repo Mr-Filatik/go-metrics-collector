@@ -20,37 +20,42 @@ type Config struct {
 
 func Initialize() *Config {
 
-	endpointEnv := os.Getenv("ADDRESS")
-	var endpoint *string
-	if endpointEnv == "" {
-		endpoint = flag.String("a", defaultServerAddress, "HTTP server endpoint")
-	} else {
-		endpoint = &endpointEnv
-	}
-
-	reportIntervalEnv := os.Getenv("REPORT_INTERVAL")
-	rnum, rerr := strconv.ParseInt(reportIntervalEnv, 10, 64)
-	var reportInterval *int64
-	if reportIntervalEnv == "" || rerr != nil {
-		reportInterval = flag.Int64("r", defaultReportInterval, "Report interval")
-	} else {
-		reportInterval = &rnum
-	}
-
-	pollIntervalEnv := os.Getenv("POLL_INTERVAL")
-	pnum, perr := strconv.ParseInt(pollIntervalEnv, 10, 64)
-	var pollInterval *int64
-	if pollIntervalEnv == "" || perr != nil {
-		pollInterval = flag.Int64("p", defaultPollInterval, "Poll interval")
-	} else {
-		pollInterval = &pnum
-	}
-	flag.Parse()
-
 	config := Config{
-		ServerAddress:  "http://" + *endpoint,
-		PollInterval:   *pollInterval,
-		ReportInterval: *reportInterval,
+		ServerAddress:  "http://" + defaultServerAddress,
+		PollInterval:   defaultPollInterval,
+		ReportInterval: defaultReportInterval,
 	}
+
+	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
+	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
+	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
+	flag.Parse()
+	if argEndpValue != nil && *argEndpValue != "" {
+		config.ServerAddress = "http://" + *argEndpValue
+	}
+	if argRepValue != nil && *argRepValue != 0 {
+		config.ReportInterval = *argRepValue
+	}
+	if argPollValue != nil && *argPollValue != 0 {
+		config.PollInterval = *argPollValue
+	}
+
+	envEndpValue, isEndpValue := os.LookupEnv("ADDRESS")
+	if isEndpValue && envEndpValue != "" {
+		config.ServerAddress = envEndpValue
+	}
+	envRepValue, isRepValue := os.LookupEnv("REPORT_INTERVAL")
+	if isRepValue && envRepValue != "" {
+		if val, err := strconv.ParseInt(envRepValue, 10, 64); err == nil {
+			config.ReportInterval = val
+		}
+	}
+	envPollValue, isPollValue := os.LookupEnv("POLL_INTERVAL")
+	if isPollValue && envPollValue != "" {
+		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
+			config.PollInterval = val
+		}
+	}
+
 	return &config
 }

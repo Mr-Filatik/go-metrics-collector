@@ -15,17 +15,20 @@ type Config struct {
 
 func Initialize() *Config {
 
-	endpointEnv := os.Getenv("ADDRESS")
-	var endpoint *string
-	if endpointEnv == "" {
-		endpoint = flag.String("a", defaultServerAddress, "HTTP server endpoint")
-	} else {
-		endpoint = &endpointEnv
-	}
-	flag.Parse()
-
 	config := Config{
-		ServerAddress: *endpoint,
+		ServerAddress: defaultServerAddress,
 	}
+
+	argValue := flag.String("a", "test", "HTTP server endpoint")
+	flag.Parse()
+	if argValue != nil && *argValue != "" {
+		config.ServerAddress = *argValue
+	}
+
+	envValue, isValue := os.LookupEnv("ADDRESS")
+	if isValue && envValue != "" {
+		config.ServerAddress = envValue
+	}
+
 	return &config
 }
