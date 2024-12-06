@@ -53,7 +53,7 @@ func (s *Storage) Get(t entity.MetricType, n string) (string, error) {
 
 	m, err := s.repository.Get(n)
 	if err != nil {
-		return "", err
+		return "", errors.New(err.Error())
 	}
 	if t == m.Type {
 		log.Printf("Get value: %v - %v.", n, m.Value)
