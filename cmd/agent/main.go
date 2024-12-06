@@ -10,11 +10,11 @@ import (
 )
 
 func main() {
-	config := config.Initialize()
+	conf := config.Initialize()
 	metrics := metric.New()
 
-	go RunUpdater(metrics, config.PollInterval)
-	RunReporter(metrics, config.ServerAddress, config.ReportInterval)
+	go RunUpdater(metrics, conf.PollInterval)
+	RunReporter(metrics, conf.ServerAddress, conf.ReportInterval)
 }
 
 func RunUpdater(m *metric.AgentMetrics, pollInterval int64) {
