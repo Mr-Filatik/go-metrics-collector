@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage/abstract"
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
 
-func GetAllMetricsHandle(s abstract.Storage) http.HandlerFunc {
+func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -29,7 +29,7 @@ func GetAllMetricsHandle(s abstract.Storage) http.HandlerFunc {
 	}
 }
 
-func GetMetricHandle(s abstract.Storage) http.HandlerFunc {
+func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -58,7 +58,7 @@ func GetMetricHandle(s abstract.Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateMetricHandle(s abstract.Storage) http.HandlerFunc {
+func UpdateMetricHandle(s storage.Storage) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

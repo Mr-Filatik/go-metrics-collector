@@ -18,9 +18,9 @@ func main() {
 	stor := storage.New(repo)
 
 	r := chi.NewRouter()
-	r.Get("/", handler.GetAllMetricsHandle(stor))
-	r.Get("/value/{type}/{name}", handler.GetMetricHandle(stor))
-	r.Post("/update/{type}/{name}/{value}", handler.UpdateMetricHandle(stor))
+	r.Get("/", handler.GetAllMetricsHandle(*stor))
+	r.Get("/value/{type}/{name}", handler.GetMetricHandle(*stor))
+	r.Post("/update/{type}/{name}/{value}", handler.UpdateMetricHandle(*stor))
 
 	log.Printf("Start server on endpoint %v.", config.ServerAddress)
 	err := http.ListenAndServe(config.ServerAddress, r)

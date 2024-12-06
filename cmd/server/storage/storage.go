@@ -5,25 +5,32 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository/abstract"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
 
-type MemStorage struct {
-	repository abstract.Repository
+type Repository interface {
+	GetAll() []entity.Metric
+	Get(name string) (entity.Metric, error)
+	Create(e entity.Metric) error
+	Update(e entity.Metric) error
+	Remove(e entity.Metric) error
 }
 
-func New(r abstract.Repository) *MemStorage {
-
-	return &MemStorage{repository: r}
+type Storage struct {
+	repository Repository
 }
 
-func (s *MemStorage) GetAll() []entity.Metric {
+func New(r Repository) *Storage {
+
+	return &Storage{repository: r}
+}
+
+func (s *Storage) GetAll() []entity.Metric {
 
 	return s.repository.GetAll()
 }
 
-func (s *MemStorage) Get(t entity.MetricType, n string) (string, error) {
+func (s *Storage) Get(t entity.MetricType, n string) (string, error) {
 
 	if t != entity.Gauge && t != entity.Counter {
 		log.Printf("Mem storage error: %v - %v.", "invalid metric type", t)
@@ -43,7 +50,7 @@ func (s *MemStorage) Get(t entity.MetricType, n string) (string, error) {
 	}
 }
 
-func (s *MemStorage) CreateOrUpdate(t entity.MetricType, n string, v string) error {
+func (s *Storage) CreateOrUpdate(t entity.MetricType, n string, v string) error {
 
 	if t != entity.Gauge && t != entity.Counter {
 		log.Printf("Mem storage error: %v - %v.", "invalid metric type", t)
@@ -64,7 +71,7 @@ func (s *MemStorage) CreateOrUpdate(t entity.MetricType, n string, v string) err
 	return nil
 }
 
-func (s *MemStorage) updateMetric(currentMetric entity.Metric, newValue string) error {
+func (s *Storage) updateMetric(currentMetric entity.Metric, newValue string) error {
 
 	if currentMetric.Type == entity.Gauge {
 		return s.updateGaugeMetric(currentMetric, newValue)
@@ -75,7 +82,7 @@ func (s *MemStorage) updateMetric(currentMetric entity.Metric, newValue string) 
 	return nil
 }
 
-func (s *MemStorage) updateGaugeMetric(currentMetric entity.Metric, newValue string) error {
+func (s *Storage) updateGaugeMetric(currentMetric entity.Metric, newValue string) error {
 
 	if num, err := strconv.ParseFloat(newValue, 64); err == nil {
 		newValue = strconv.FormatFloat(num, 'f', -1, 64)
@@ -87,7 +94,7 @@ func (s *MemStorage) updateGaugeMetric(currentMetric entity.Metric, newValue str
 	return errors.New("invalid metric value")
 }
 
-func (s *MemStorage) updateCounterMetric(currentMetric entity.Metric, newValue string) error {
+func (s *Storage) updateCounterMetric(currentMetric entity.Metric, newValue string) error {
 
 	if nnum, err := strconv.ParseInt(newValue, 10, 64); err == nil {
 		if newnum, err2 := strconv.ParseInt(currentMetric.Value, 10, 64); err2 == nil {

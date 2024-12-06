@@ -1,15 +1,15 @@
 package metric
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"runtime"
 	"strconv"
+
+	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
 
-type Metric struct {
+type AgentMetrics struct {
 	Alloc         float64
 	BuckHashSys   float64
 	Frees         float64
@@ -41,13 +41,13 @@ type Metric struct {
 	RandomValue   float64
 }
 
-func New() *Metric {
+func New() *AgentMetrics {
 
-	metrics := Metric{PollCount: 0}
+	metrics := AgentMetrics{PollCount: 0}
 	return &metrics
 }
 
-func (metric *Metric) Update() {
+func (metric *AgentMetrics) Update() {
 
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
@@ -84,110 +84,51 @@ func (metric *Metric) Update() {
 	log.Printf("Update metrics.")
 }
 
-type SendFunc func(metricType string, metricName string, metricValue string) error
+func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
 
-func (metric *Metric) Foreach(sendFunc SendFunc) error {
+	list := make([]entity.Metric, 0)
+	list = append(list, addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "GCCPUFraction", strconv.FormatFloat(metric.GCCPUFraction, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "GCSys", strconv.FormatFloat(metric.GCSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapAlloc", strconv.FormatFloat(metric.HeapAlloc, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapIdle", strconv.FormatFloat(metric.HeapIdle, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapInuse", strconv.FormatFloat(metric.HeapInuse, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapObjects", strconv.FormatFloat(metric.HeapObjects, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapReleased", strconv.FormatFloat(metric.HeapReleased, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "HeapSys", strconv.FormatFloat(metric.HeapSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "LastGC", strconv.FormatFloat(metric.LastGC, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "Lookups", strconv.FormatFloat(metric.Lookups, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "MCacheInuse", strconv.FormatFloat(metric.MCacheInuse, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "MCacheSys", strconv.FormatFloat(metric.MCacheSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "MSpanInuse", strconv.FormatFloat(metric.MSpanInuse, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "MSpanSys", strconv.FormatFloat(metric.MSpanSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "Mallocs", strconv.FormatFloat(metric.Mallocs, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "NextGC", strconv.FormatFloat(metric.NextGC, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "NumForcedGC", strconv.FormatFloat(metric.NumForcedGC, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "NumGC", strconv.FormatFloat(metric.NumGC, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "OtherSys", strconv.FormatFloat(metric.OtherSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "PauseTotalNs", strconv.FormatFloat(metric.PauseTotalNs, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "StackInuse", strconv.FormatFloat(metric.StackInuse, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)))
+	list = append(list, addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)))
 
-	errCount := 0
-	if err := sendFunc("gauge", "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "GCCPUFraction", strconv.FormatFloat(metric.GCCPUFraction, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "GCSys", strconv.FormatFloat(metric.GCSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapAlloc", strconv.FormatFloat(metric.HeapAlloc, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapIdle", strconv.FormatFloat(metric.HeapIdle, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapInuse", strconv.FormatFloat(metric.HeapInuse, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapObjects", strconv.FormatFloat(metric.HeapObjects, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapReleased", strconv.FormatFloat(metric.HeapReleased, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "HeapSys", strconv.FormatFloat(metric.HeapSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "LastGC", strconv.FormatFloat(metric.LastGC, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "Lookups", strconv.FormatFloat(metric.Lookups, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "MCacheInuse", strconv.FormatFloat(metric.MCacheInuse, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "MCacheSys", strconv.FormatFloat(metric.MCacheSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "MSpanInuse", strconv.FormatFloat(metric.MSpanInuse, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "MSpanSys", strconv.FormatFloat(metric.MSpanSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "Mallocs", strconv.FormatFloat(metric.Mallocs, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "NextGC", strconv.FormatFloat(metric.NextGC, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "NumForcedGC", strconv.FormatFloat(metric.NumForcedGC, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "NumGC", strconv.FormatFloat(metric.NumGC, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "OtherSys", strconv.FormatFloat(metric.OtherSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "PauseTotalNs", strconv.FormatFloat(metric.PauseTotalNs, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "StackInuse", strconv.FormatFloat(metric.StackInuse, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-	if err := sendFunc("gauge", "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)); err != nil {
-		errCount++
-	}
-
-	if err := sendFunc("counter", "PollCount", strconv.FormatInt(metric.PollCount, 10)); err != nil {
-		errCount++
-	} else {
+	list = append(list, addMetric(entity.Counter, "PollCount", strconv.FormatInt(metric.PollCount, 10)))
+	if isClearCounters {
 		metric.PollCount = 0
 	}
-
-	if errCount != 0 {
-		result := fmt.Sprintf("error count: %v", errCount)
-		return errors.New(result)
-	}
-	return nil
+	return list
 }
 
-func (metric *Metric) Log() {
+func addMetric(t entity.MetricType, n string, v string) entity.Metric {
+
+	return entity.Metric{Type: t, Name: n, Value: v}
+}
+
+func (metric *AgentMetrics) Log() {
 
 	log.Printf("Log all metrics:")
 	log.Printf("- Alloc: %v.", metric.Alloc)

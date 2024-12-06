@@ -3,7 +3,7 @@ package repository
 import (
 	"errors"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
 
 type MemRepository struct {
