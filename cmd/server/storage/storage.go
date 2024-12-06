@@ -35,7 +35,10 @@ func New(r Repository) *Storage {
 
 func IsExpectedError(e error) bool {
 	err := e.Error()
-	return err == ErrorMetricName || err == ErrorMetricType || err == ErrorMetricValue || err == repository.ErrorMetricNotFound
+	return err == ErrorMetricName ||
+		err == ErrorMetricType ||
+		err == ErrorMetricValue ||
+		err == repository.ErrorMetricNotFound
 }
 
 func (s *Storage) GetAll() []entity.Metric {
@@ -106,7 +109,7 @@ func (s *Storage) updateGaugeMetric(currentMetric entity.Metric, newValue string
 		log.Printf("Update value: %v - %v to %v.", currentMetric.Name, currentMetric.Value, newValue)
 		return nil
 	}
-	reportStorageError(ErrorMetricValue, string(newValue))
+	log.Printf("Mem storage error: %v (value - %v).", ErrorMetricValue, newValue)
 	return errors.New(ErrorMetricValue)
 }
 
@@ -124,7 +127,7 @@ func (s *Storage) updateCounterMetric(currentMetric entity.Metric, newValue stri
 			return nil
 		}
 	}
-	reportStorageError(ErrorMetricValue, string(newValue))
+	log.Printf("Mem storage error: %v (value - %v).", ErrorMetricValue, newValue)
 	return errors.New(ErrorMetricValue)
 }
 
