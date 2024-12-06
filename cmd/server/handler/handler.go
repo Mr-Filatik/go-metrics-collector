@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
 	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
@@ -44,6 +45,11 @@ func GetMetricHandle(s storage.Storage) http.HandlerFunc {
 		val, err := s.Get(t, n)
 		if err != nil {
 			if storage.IsExpectedError(err) {
+				if err.Error() == repository.ErrorMetricNotFound {
+					log.Printf("Server error: %v.", err.Error())
+					http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
+					return
+				}
 				reportServerError(w, err, true)
 			} else {
 				reportServerError(w, err, false)
