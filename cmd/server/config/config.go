@@ -24,8 +24,8 @@ func Initialize() *Config {
 		config.ServerAddress = *argValue
 	}
 
-	envValue, isValue := os.LookupEnv("ADDRESS")
-	if isValue && envValue != "" {
+	envValue, ok := os.LookupEnv("ADDRESS")
+	if ok && envValue != "" {
 		config.ServerAddress = envValue
 	}
 

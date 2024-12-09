@@ -39,18 +39,18 @@ func Initialize() *Config {
 		config.PollInterval = *argPollValue
 	}
 
-	envEndpValue, isEndpValue := os.LookupEnv("ADDRESS")
-	if isEndpValue && envEndpValue != "" {
+	envEndpValue, ok := os.LookupEnv("ADDRESS")
+	if ok && envEndpValue != "" {
 		config.ServerAddress = "http://" + envEndpValue
 	}
-	envRepValue, isRepValue := os.LookupEnv("REPORT_INTERVAL")
-	if isRepValue && envRepValue != "" {
+	envRepValue, ok := os.LookupEnv("REPORT_INTERVAL")
+	if ok && envRepValue != "" {
 		if val, err := strconv.ParseInt(envRepValue, 10, 64); err == nil {
 			config.ReportInterval = val
 		}
 	}
-	envPollValue, isPollValue := os.LookupEnv("POLL_INTERVAL")
-	if isPollValue && envPollValue != "" {
+	envPollValue, ok := os.LookupEnv("POLL_INTERVAL")
+	if ok && envPollValue != "" {
 		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
 			config.PollInterval = val
 		}
