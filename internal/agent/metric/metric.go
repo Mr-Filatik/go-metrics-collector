@@ -82,7 +82,7 @@ func (metric *AgentMetrics) Update() {
 	log.Printf("Update metrics.")
 }
 
-func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
+func (metric *AgentMetrics) GetAllGauge() []entity.Metric {
 	list := make([]entity.Metric, 0)
 	list = append(list,
 		addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)),
@@ -113,12 +113,31 @@ func (metric *AgentMetrics) GetAll(isClearCounters bool) []entity.Metric {
 		addMetric(entity.Gauge, "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)),
-		addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)),
-		addMetric(entity.Counter, "PollCount", strconv.FormatInt(metric.PollCount, 10)))
-	if isClearCounters {
+		addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)))
+	log.Printf("Get all gauge metrics. Count: %v.", len(list))
+	return list
+}
+
+func (metric *AgentMetrics) GetAllCounter() []string {
+	list := make([]string, 0)
+	list = append(list, "PollCount")
+	log.Printf("Get all counter metrics. Count: %v.", len(list))
+	return list
+}
+
+func (metric *AgentMetrics) GetCounter(name string) entity.Metric {
+	if name == "PollCount" {
+		log.Printf("Get counter metric. Name: %v.", name)
+		return addMetric(entity.Counter, name, strconv.FormatInt(metric.PollCount, 10))
+	}
+	return entity.Metric{}
+}
+
+func (metric *AgentMetrics) ClearCounter(name string) {
+	if name == "PollCount" {
+		log.Printf("Clear counter metric. Name: %v.", name)
 		metric.PollCount = 0
 	}
-	return list
 }
 
 func addMetric(t entity.MetricType, n string, v string) entity.Metric {
