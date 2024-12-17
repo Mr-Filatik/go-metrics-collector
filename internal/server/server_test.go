@@ -43,7 +43,7 @@ func TestGetAllMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
 			w := httptest.NewRecorder()
 
 			serv.GetAllMetrics(w, req)
@@ -98,7 +98,7 @@ func TestGetMetric(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
 			req.SetPathValue("type", tt.parameters["type"])
 			req.SetPathValue("name", tt.parameters["name"])
 			w := httptest.NewRecorder()
@@ -155,7 +155,7 @@ func TestUpdateMetric(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequest(tt.method, tt.path, http.NoBody)
 			req.SetPathValue("type", tt.parameters["type"])
 			req.SetPathValue("name", tt.parameters["name"])
 			req.SetPathValue("value", tt.parameters["value"])
