@@ -8,6 +8,7 @@ import (
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/config/server"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -27,9 +28,9 @@ func NewServer(s *storage.Storage) *Server {
 }
 
 func (s *Server) routes() {
-	s.router.Get("/", http.HandlerFunc(s.GetAllMetrics))
-	s.router.Get("/value/{type}/{name}", http.HandlerFunc(s.GetMetric))
-	s.router.Post("/update/{type}/{name}/{value}", http.HandlerFunc(s.UpdateMetric))
+	s.router.Handle("/", middleware.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/value/{type}/{name}", middleware.MainConveyor(http.HandlerFunc(s.GetMetric)))
+	s.router.Handle("/update/{type}/{name}/{value}", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
 
 func (s *Server) Start(conf config.Config) {
