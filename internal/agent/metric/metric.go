@@ -88,7 +88,6 @@ func (metric *AgentMetrics) GetAllGauge() []entity.Metric {
 		addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)),
 		addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)),
-		addMetric(entity.Gauge, "Frees", strconv.FormatFloat(metric.Frees, 'f', -1, 64)),
 		addMetric(entity.Gauge, "GCCPUFraction", strconv.FormatFloat(metric.GCCPUFraction, 'f', -1, 64)),
 		addMetric(entity.Gauge, "GCSys", strconv.FormatFloat(metric.GCSys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "HeapAlloc", strconv.FormatFloat(metric.HeapAlloc, 'f', -1, 64)),

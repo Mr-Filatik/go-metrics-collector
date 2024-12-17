@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/config"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/handler"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage"
+	config "github.com/Mr-Filatik/go-metrics-collector/internal/config/server"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/handler"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
 

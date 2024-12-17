@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/storage"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
 )
 
 func GetAllMetricsHandle(s storage.Storage) http.HandlerFunc {
