@@ -13,7 +13,10 @@ func Initialize(level zapcore.Level) {
 		panic(err)
 	}
 	GlobalLogger = log.Sugar()
-	if err := log.Sync(); err != nil {
+}
+
+func Close() {
+	if err := GlobalLogger.Sync(); err != nil {
 		panic(err)
 	}
 }

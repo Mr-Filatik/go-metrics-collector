@@ -11,6 +11,7 @@ import (
 
 func main() {
 	logger.Initialize(zapcore.InfoLevel)
+	defer logger.Close()
 
 	conf := config.Initialize()
 	repo := repository.New()
