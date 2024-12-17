@@ -5,8 +5,8 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/server/repository"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 )
 
 type Repository interface {
