@@ -28,7 +28,7 @@ func WithLogging(next http.Handler) http.Handler {
 			r.Header.Set("X-Request-Id", uuid.New().String())
 		}
 		startTime := time.Now().UTC()
-		requestId := r.Header.Get("X-Request-Id")
+		requestID := r.Header.Get("X-Request-Id")
 
 		lwr := negroni.NewResponseWriter(w)
 
@@ -36,7 +36,7 @@ func WithLogging(next http.Handler) http.Handler {
 
 		logger.Info(
 			"Request",
-			"request_id", requestId,
+			"request_id", requestID,
 			"request_method", r.Method,
 			"request_uri", r.RequestURI,
 			"request_time", startTime.String(),
@@ -50,7 +50,7 @@ func WithLogging(next http.Handler) http.Handler {
 
 		logger.Info(
 			"Responce",
-			"request_id", requestId,
+			"request_id", requestID,
 			"status", statusCode,
 			"content_lenght", lwr.Size(),
 		)
