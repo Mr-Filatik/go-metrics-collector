@@ -192,16 +192,14 @@ func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
 func serverResponceWithJSON(w http.ResponseWriter, v any) {
 	res, err := json.Marshal(v)
 	if err != nil {
-		log.Printf("Server error: %v.", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverResponceError(w, err, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
 	if err != nil {
-		log.Printf("Server error: %v.", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverResponceError(w, err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -213,8 +211,7 @@ func serverResponceError(w http.ResponseWriter, err error, status int) {
 
 func reportServerError(w http.ResponseWriter, e error, isExpected bool) {
 	if isExpected {
-		log.Printf("Server error: %v.", e.Error())
-		http.Error(w, "Error: "+e.Error(), http.StatusBadRequest)
+		serverResponceError(w, e, http.StatusBadRequest)
 	} else {
 		log.Printf("Unexpected server error: %v.", e.Error())
 		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
