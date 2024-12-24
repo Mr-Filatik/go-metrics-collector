@@ -56,7 +56,7 @@ func (s *Storage) Get(t entity.MetricType, n string) (string, error) {
 		return "", errors.New(err.Error())
 	}
 	if t == m.Type {
-		log.Printf("Get value: %v - %v.", n, m.Value)
+		log.Printf("Get value: %v %v - %v.", t, n, m.Value)
 		return m.Value, nil
 	} else {
 		reportStorageError(ErrorMetricType, string(t))
@@ -77,7 +77,7 @@ func (s *Storage) CreateOrUpdate(t entity.MetricType, n string, v string) error 
 			reportStorageError(UnexpectedMetricCreate, n)
 			return errors.New(UnexpectedMetricCreate)
 		}
-		log.Printf("Create value: %v - %v.", n, v)
+		log.Printf("Create value: %v %v - %v.", t, n, v)
 	} else {
 		if t == m.Type {
 			return s.updateMetric(m, v)
