@@ -31,8 +31,8 @@ func NewServer(s *storage.Storage) *Server {
 
 func (s *Server) routes() {
 	s.router.Handle("/", middleware.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/value/", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
-	s.router.Handle("/update/", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
+	s.router.Handle("/value", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
+	s.router.Handle("/update", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
 	s.router.Handle("/value/{type}/{name}", middleware.MainConveyor(http.HandlerFunc(s.GetMetric)))
 	s.router.Handle("/update/{type}/{name}/{value}", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
