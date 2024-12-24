@@ -70,8 +70,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if storage.IsExpectedError(err) {
 			if err.Error() == repository.ErrorMetricNotFound {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
+				serverResponceError(w, err, http.StatusNotFound)
 				return
 			}
 			reportServerError(w, err, true)
@@ -96,8 +95,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if storage.IsExpectedError(err) {
 			if err.Error() == repository.ErrorMetricNotFound {
-				log.Printf("Server error: %v.", err.Error())
-				http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
+				serverResponceError(w, err, http.StatusNotFound)
 				return
 			}
 			reportServerError(w, err, true)
@@ -206,6 +204,11 @@ func serverResponceWithJSON(w http.ResponseWriter, v any) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func serverResponceError(w http.ResponseWriter, err error, status int) {
+	log.Printf("Server error: %v.", err.Error())
+	http.Error(w, "Error: "+err.Error(), status)
 }
 
 func reportServerError(w http.ResponseWriter, e error, isExpected bool) {
