@@ -48,16 +48,7 @@ func (s *Server) Start(conf config.Config) {
 func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	checkRequestMethod(w, r.Method, http.MethodGet)
 
-	res, err := json.Marshal(s.storage.GetAll())
-	if err != nil {
-		reportServerError(w, err, false)
-		return
-	}
-
-	_, wErr := w.Write(res)
-	if wErr != nil {
-		reportServerError(w, wErr, false)
-	}
+	serverResponceWithJSON(w, s.storage.GetAll())
 }
 
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
@@ -68,15 +59,11 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	val, err := s.storage.Get(t, n)
 	if err != nil {
-		if storage.IsExpectedError(err) {
-			if err.Error() == repository.ErrorMetricNotFound {
-				serverResponceError(w, err, http.StatusNotFound)
-				return
-			}
-			reportServerError(w, err, true)
-		} else {
-			reportServerError(w, err, false)
+		if err.Error() == repository.ErrorMetricNotFound {
+			serverResponceError(w, err, http.StatusNotFound)
+			return
 		}
+		reportServerError(w, err, storage.IsExpectedError(err))
 	}
 
 	_, wErr := w.Write([]byte(val))
@@ -119,11 +106,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	num, err := strconv.ParseFloat(val, 64)
 	if err != nil {
-		if storage.IsExpectedError(err) {
-			reportServerError(w, err, true)
-		} else {
-			reportServerError(w, err, false)
-		}
+		reportServerError(w, err, storage.IsExpectedError(err))
 	}
 
 	metr.Value = &num
@@ -139,11 +122,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	err := s.storage.CreateOrUpdate(t, n, v)
 	if err != nil {
-		if storage.IsExpectedError(err) {
-			reportServerError(w, err, true)
-		} else {
-			reportServerError(w, err, false)
-		}
+		reportServerError(w, err, storage.IsExpectedError(err))
 	}
 }
 
@@ -181,11 +160,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	err = s.storage.CreateOrUpdate(t, n, v)
 	if err != nil {
-		if storage.IsExpectedError(err) {
-			reportServerError(w, err, true)
-		} else {
-			reportServerError(w, err, false)
-		}
+		reportServerError(w, err, storage.IsExpectedError(err))
 	}
 
 	serverResponceWithJSON(w, metr)

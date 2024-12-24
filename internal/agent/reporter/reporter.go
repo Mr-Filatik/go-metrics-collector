@@ -31,7 +31,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				}
 
 				address := endpoint + "/update/"
-				log.Printf("Response to %v.", address)
+				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, *metr.Value, metr.Delta)
 				resp, err := client.R().
 					SetHeader("Content-Type", " application/json").
 					SetBody(dat).
@@ -61,7 +61,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				}
 
 				address := endpoint + "/update/"
-				log.Printf("Response to %v.", address)
+				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, metr.Value, *metr.Delta)
 				resp, rerr := client.R().
 					SetHeader("Content-Type", " application/json").
 					SetBody(dat).
