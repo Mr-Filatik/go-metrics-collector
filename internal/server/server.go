@@ -1,9 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/config/server"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
@@ -29,6 +31,8 @@ func NewServer(s *storage.Storage) *Server {
 
 func (s *Server) routes() {
 	s.router.Handle("/", middleware.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/value/", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJson)))
+	s.router.Handle("/update/", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJson)))
 	s.router.Handle("/value/{type}/{name}", middleware.MainConveyor(http.HandlerFunc(s.GetMetric)))
 	s.router.Handle("/update/{type}/{name}/{value}", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
@@ -42,11 +46,7 @@ func (s *Server) Start(conf config.Config) {
 }
 
 func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		log.Printf("Invalid request type %v, needed GET.", r.Method)
-		http.Error(w, "Only GET requests are allowed!", http.StatusMethodNotAllowed)
-		return
-	}
+	checkRequestMethod(w, r.Method, http.MethodGet)
 
 	res, err := json.Marshal(s.storage.GetAll())
 	if err != nil {
@@ -61,11 +61,7 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		log.Printf("Invalid request type %v, needed GET.", r.Method)
-		http.Error(w, "Only GET requests are allowed!", http.StatusMethodNotAllowed)
-		return
-	}
+	checkRequestMethod(w, r.Method, http.MethodGet)
 
 	t := entity.MetricType(r.PathValue("type"))
 	n := r.PathValue("name")
@@ -90,12 +86,44 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		log.Printf("Invalid request type %v, needed POST.", r.Method)
-		http.Error(w, "Only POST requests are allowed!", http.StatusMethodNotAllowed)
-		return
+func (s *Server) GetMetricJson(w http.ResponseWriter, r *http.Request) {
+	checkRequestMethod(w, r.Method, http.MethodGet)
+
+	t := entity.MetricType(r.PathValue("type"))
+	n := r.PathValue("name")
+
+	val, err := s.storage.Get(t, n)
+	if err != nil {
+		if storage.IsExpectedError(err) {
+			if err.Error() == repository.ErrorMetricNotFound {
+				log.Printf("Server error: %v.", err.Error())
+				http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
+				return
+			}
+			reportServerError(w, err, true)
+		} else {
+			reportServerError(w, err, false)
+		}
 	}
+	num, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		if storage.IsExpectedError(err) {
+			reportServerError(w, err, true)
+		} else {
+			reportServerError(w, err, false)
+		}
+	}
+
+	metr := entity.Metrics{
+		ID:    n,
+		MType: string(t),
+		Value: &num,
+	}
+	serverResponceWithJson(w, metr)
+}
+
+func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+	checkRequestMethod(w, r.Method, http.MethodPost)
 
 	t := entity.MetricType(r.PathValue("type"))
 	n := r.PathValue("name")
@@ -108,6 +136,74 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		} else {
 			reportServerError(w, err, false)
 		}
+	}
+}
+
+func (s *Server) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
+	checkRequestMethod(w, r.Method, http.MethodPost)
+
+	var metr entity.Metrics
+	var buf bytes.Buffer
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	t := entity.MetricType(metr.MType)
+	n := metr.ID
+	v := "0"
+
+	if metr.Delta == nil && metr.Value == nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if metr.Delta != nil {
+		v = strconv.FormatInt(*metr.Delta, 10)
+	}
+	if metr.Value != nil {
+		v = strconv.FormatFloat(*metr.Value, 'f', -1, 64)
+	}
+
+	err = s.storage.CreateOrUpdate(t, n, v)
+	if err != nil {
+		if storage.IsExpectedError(err) {
+			reportServerError(w, err, true)
+		} else {
+			reportServerError(w, err, false)
+		}
+	}
+
+	serverResponceWithJson(w, metr)
+}
+
+func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
+	if current != needed {
+		log.Printf("Invalid request type %v, needed %v.", current, needed)
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func serverResponceWithJson(w http.ResponseWriter, v any) {
+	res, err := json.Marshal(v)
+	if err != nil {
+		log.Printf("Server error: %v.", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(res)
+	if err != nil {
+		log.Printf("Server error: %v.", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
