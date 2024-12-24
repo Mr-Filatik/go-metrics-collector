@@ -162,6 +162,12 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		reportServerError(w, err, storage.IsExpectedError(err))
 	}
+	newsval, err := s.storage.Get(t, n)
+	if err == nil {
+		if nv, nerr := strconv.ParseFloat(newsval, 64); nerr == nil {
+			metr.Value = &nv
+		}
+	}
 
 	serverResponceWithJSON(w, metr)
 }
