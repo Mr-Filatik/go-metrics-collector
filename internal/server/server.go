@@ -86,7 +86,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodGet)
+	checkRequestMethod(w, r.Method, http.MethodPost)
 
 	var metr entity.Metrics
 	var buf bytes.Buffer
