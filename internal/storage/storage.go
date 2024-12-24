@@ -106,7 +106,7 @@ func (s *Storage) updateGaugeMetric(currentMetric entity.Metric, newValue string
 			reportStorageError(UnexpectedMetricUpdate, currentMetric.Name)
 			return errors.New(UnexpectedMetricUpdate)
 		}
-		log.Printf("Update value: %v - %v to %v.", currentMetric.Name, currentMetric.Value, newValue)
+		log.Printf("Update value: %v %v - %v to %v.", currentMetric.Type, currentMetric.Name, currentMetric.Value, newValue)
 		return nil
 	}
 	log.Printf("Mem storage error: %v (value - %v).", ErrorMetricValue, newValue)
@@ -123,7 +123,7 @@ func (s *Storage) updateCounterMetric(currentMetric entity.Metric, newValue stri
 				reportStorageError(UnexpectedMetricUpdate, currentMetric.Name)
 				return errors.New(UnexpectedMetricUpdate)
 			}
-			log.Printf("Update value: %v - %v to %v.", currentMetric.Name, currentMetric.Value, newValue)
+			log.Printf("Update value: %v %v - %v to %v.", currentMetric.Type, currentMetric.Name, currentMetric.Value, newValue)
 			return nil
 		}
 	}
