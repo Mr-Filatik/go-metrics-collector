@@ -151,12 +151,16 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid values", http.StatusBadRequest)
 		return
 	}
-	if metr.Delta != nil {
-		v = strconv.FormatInt(*metr.Delta, 10)
-	}
+	var val float64
 	if metr.Value != nil {
-		v = strconv.FormatFloat(*metr.Value, 'f', -1, 64)
+		val = *metr.Value
+		//v = strconv.FormatFloat(*metr.Value, 'f', -1, 64)
 	}
+	if metr.Delta != nil {
+		val += float64(*metr.Delta)
+		//v = strconv.FormatInt(*metr.Delta, 10)
+	}
+	v = strconv.FormatFloat(val, 'f', -1, 64)
 
 	err = s.storage.CreateOrUpdate(t, n, v)
 	if err != nil {
