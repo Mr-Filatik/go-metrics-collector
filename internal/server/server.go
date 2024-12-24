@@ -31,8 +31,8 @@ func NewServer(s *storage.Storage) *Server {
 
 func (s *Server) routes() {
 	s.router.Handle("/", middleware.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/value/", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJson)))
-	s.router.Handle("/update/", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJson)))
+	s.router.Handle("/value/", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
+	s.router.Handle("/update/", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
 	s.router.Handle("/value/{type}/{name}", middleware.MainConveyor(http.HandlerFunc(s.GetMetric)))
 	s.router.Handle("/update/{type}/{name}/{value}", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
@@ -86,7 +86,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) GetMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	checkRequestMethod(w, r.Method, http.MethodGet)
 
 	t := entity.MetricType(r.PathValue("type"))
@@ -119,7 +119,7 @@ func (s *Server) GetMetricJson(w http.ResponseWriter, r *http.Request) {
 		MType: string(t),
 		Value: &num,
 	}
-	serverResponceWithJson(w, metr)
+	serverResponceWithJSON(w, metr)
 }
 
 func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +139,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	checkRequestMethod(w, r.Method, http.MethodPost)
 
 	var metr entity.Metrics
@@ -148,6 +148,7 @@ func (s *Server) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
@@ -160,7 +161,7 @@ func (s *Server) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 	v := "0"
 
 	if metr.Delta == nil && metr.Value == nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid values", http.StatusBadRequest)
 		return
 	}
 	if metr.Delta != nil {
@@ -179,7 +180,7 @@ func (s *Server) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	serverResponceWithJson(w, metr)
+	serverResponceWithJSON(w, metr)
 }
 
 func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
@@ -190,7 +191,7 @@ func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
 	}
 }
 
-func serverResponceWithJson(w http.ResponseWriter, v any) {
+func serverResponceWithJSON(w http.ResponseWriter, v any) {
 	res, err := json.Marshal(v)
 	if err != nil {
 		log.Printf("Server error: %v.", err.Error())
