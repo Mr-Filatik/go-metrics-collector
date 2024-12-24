@@ -145,7 +145,6 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	t := entity.MetricType(metr.MType)
 	n := metr.ID
-	v := "0"
 
 	if metr.Delta == nil && metr.Value == nil {
 		http.Error(w, "invalid values", http.StatusBadRequest)
@@ -154,15 +153,12 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var val float64
 	if metr.Value != nil {
 		val = *metr.Value
-		//v = strconv.FormatFloat(*metr.Value, 'f', -1, 64)
 	}
 	if metr.Delta != nil {
-		val += float64(*metr.Delta)
-		//v = strconv.FormatInt(*metr.Delta, 10)
+		val = float64(*metr.Delta)
 	}
-	v = strconv.FormatFloat(val, 'f', -1, 64)
 
-	err = s.storage.CreateOrUpdate(t, n, v)
+	err = s.storage.CreateOrUpdate(t, n, strconv.FormatFloat(val, 'f', -1, 64))
 	if err != nil {
 		reportServerError(w, err, storage.IsExpectedError(err))
 	}
