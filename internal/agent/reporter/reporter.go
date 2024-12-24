@@ -33,7 +33,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				address := endpoint + "/update/"
 				log.Printf("Response to %v.", address)
 				resp, err := client.R().
-					SetHeader("Content-Type", "application/json").
+					SetHeader("Content-Type", " application/json").
 					SetBody(dat).
 					Post(address)
 
@@ -63,7 +63,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				address := endpoint + "/update/"
 				log.Printf("Response to %v.", address)
 				resp, rerr := client.R().
-					SetHeader("Content-Type", "application/json").
+					SetHeader("Content-Type", " application/json").
 					SetBody(dat).
 					Post(address)
 
