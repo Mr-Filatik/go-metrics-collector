@@ -88,8 +88,22 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	checkRequestMethod(w, r.Method, http.MethodGet)
 
-	t := entity.MetricType(r.PathValue("type"))
-	n := r.PathValue("name")
+	var metr entity.Metrics
+	var buf bytes.Buffer
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	t := entity.MetricType(metr.MType)
+	n := metr.ID
 
 	val, err := s.storage.Get(t, n)
 	if err != nil {
@@ -112,11 +126,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	metr := entity.Metrics{
-		ID:    n,
-		MType: string(t),
-		Value: &num,
-	}
+	metr.Value = &num
 	serverResponceWithJSON(w, metr)
 }
 
