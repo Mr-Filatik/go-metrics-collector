@@ -30,7 +30,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					continue
 				}
 
-				address := endpoint + "/update/"
+				address := endpoint + "/update"
 				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, *metr.Value, metr.Delta)
 				resp, err := client.R().
 					SetHeader("Content-Type", " application/json").
@@ -41,7 +41,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					log.Printf("Error on response: %v.", err.Error())
 					continue
 				}
-				log.Printf("Response is done. StatusCode: %v.", resp.Status())
+				log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
 			}
 		}
 
@@ -60,7 +60,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					continue
 				}
 
-				address := endpoint + "/update/"
+				address := endpoint + "/update"
 				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, metr.Value, *metr.Delta)
 				resp, rerr := client.R().
 					SetHeader("Content-Type", " application/json").
@@ -72,7 +72,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					continue
 				}
 				m.ClearCounter(el)
-				log.Printf("Response is done. StatusCode: %v.", resp.Status())
+				log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
 			}
 		}
 	}
