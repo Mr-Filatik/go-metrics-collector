@@ -45,12 +45,16 @@ func IsExpectedError(e error) bool {
 }
 
 func (s *Storage) GetAll() ([]entity.Metrics, error) {
-	return s.repository.GetAll()
+	vals, err := s.repository.GetAll()
+	if err != nil {
+		return make([]entity.Metrics, 0), errors.New(err.Error())
+	}
+	return vals, nil
 }
 
 func (s *Storage) Get(id string, t string) (entity.Metrics, error) {
 	if t != entity.Gauge && t != entity.Counter {
-		s.reportStorageError(ErrorMetricType, string(t))
+		s.reportStorageError(ErrorMetricType, t)
 		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
 	m, err := s.repository.Get(id)
@@ -59,21 +63,16 @@ func (s *Storage) Get(id string, t string) (entity.Metrics, error) {
 		return entity.Metrics{}, errors.New(err.Error())
 	}
 	if t != m.MType {
-		s.reportStorageError(ErrorMetricType, string(t))
+		s.reportStorageError(ErrorMetricType, t)
 		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
-	s.log.Info(
-		"Storage get value",
-		"name", m.ID,
-		"type", m.MType,
-		"value", m.Value,
-	)
+	s.reportMetricInfo("Storage get value", m)
 	return m, nil
 }
 
 func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 	if e.MType != entity.Gauge && e.MType != entity.Counter {
-		s.reportStorageError(ErrorMetricType, string(e.MType))
+		s.reportStorageError(ErrorMetricType, e.MType)
 		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
 	m, err := s.repository.Get(e.ID)
@@ -83,17 +82,11 @@ func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 			s.reportStorageError(iErr.Error(), "")
 			return entity.Metrics{}, errors.New(UnexpectedMetricCreate)
 		}
-		s.log.Info(
-			"Storage create value",
-			"name", im.ID,
-			"type", im.MType,
-			"value", im.Value,
-			"delta", im.Delta,
-		)
+		s.reportMetricInfo("Storage create value", im)
 		return im, nil
 	} else {
 		if e.MType != m.MType {
-			s.reportStorageError(ErrorMetricType, string(e.MType))
+			s.reportStorageError(ErrorMetricType, e.MType)
 			return entity.Metrics{}, errors.New(ErrorMetricType)
 		}
 		if e.MType == entity.Gauge {
@@ -102,13 +95,7 @@ func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
-			s.log.Info(
-				"Storage update value",
-				"name", im.ID,
-				"type", im.MType,
-				"value", im.Value,
-				"delta", im.Delta,
-			)
+			s.reportMetricInfo("Storage update value", im)
 			return im, nil
 		}
 		if e.MType == entity.Counter {
@@ -119,16 +106,10 @@ func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
-			s.log.Info(
-				"Storage update value",
-				"name", im.ID,
-				"type", im.MType,
-				"value", im.Value,
-				"delta", im.Delta,
-			)
+			s.reportMetricInfo("Storage update value", im)
 			return im, nil
 		}
-		s.reportStorageError(ErrorMetricType, string(e.MType))
+		s.reportStorageError(ErrorMetricType, e.MType)
 		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
 }
@@ -146,4 +127,14 @@ func (s *Storage) reportStorageError(text string, value string) {
 			"value", value,
 		)
 	}
+}
+
+func (s *Storage) reportMetricInfo(t string, m entity.Metrics) {
+	s.log.Info(
+		t,
+		"name", m.ID,
+		"type", m.MType,
+		"value", m.Value,
+		"delta", m.Delta,
+	)
 }

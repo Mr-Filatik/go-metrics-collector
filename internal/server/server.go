@@ -103,7 +103,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metr, err := getMetricFromJson(r)
+	metr, err := getMetricFromJSON(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -166,7 +166,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metr, err := getMetricFromJson(r)
+	metr, err := getMetricFromJSON(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -181,7 +181,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	s.serverResponceWithJSON(w, m)
 }
 
-func getMetricFromJson(r *http.Request) (entity.Metrics, error) {
+func getMetricFromJSON(r *http.Request) (entity.Metrics, error) {
 	var metr entity.Metrics
 	var buf bytes.Buffer
 
@@ -229,7 +229,10 @@ func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
 }
 
 func (s *Server) serverResponceError(w http.ResponseWriter, err error, status int) {
-	//log.Printf("Server error: %v.", err.Error())
+	s.log.Info(
+		"Server error",
+		"error", err.Error(),
+	)
 	http.Error(w, "Error: "+err.Error(), status)
 }
 
@@ -237,7 +240,10 @@ func (s *Server) reportServerError(w http.ResponseWriter, e error, isExpected bo
 	if isExpected {
 		s.serverResponceError(w, e, http.StatusBadRequest)
 	} else {
-		//log.Printf("Unexpected server error: %v.", e.Error())
+		s.log.Info(
+			"Unexpected server error",
+			"error", e.Error(),
+		)
 		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
 	}
 }

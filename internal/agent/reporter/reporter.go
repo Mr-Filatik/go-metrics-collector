@@ -20,7 +20,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 			if num, err := strconv.ParseFloat(el.Value, 64); err == nil {
 				metr := entity.Metrics{
 					ID:    el.Name,
-					MType: string(el.Type),
+					MType: el.Type,
 					Value: &num,
 				}
 
@@ -50,7 +50,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 			if num, err := strconv.ParseInt(met.Value, 10, 64); err == nil {
 				metr := entity.Metrics{
 					ID:    met.Name,
-					MType: string(met.Type),
+					MType: met.Type,
 					Delta: &num,
 				}
 
