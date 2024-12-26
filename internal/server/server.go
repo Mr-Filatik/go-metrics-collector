@@ -105,7 +105,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metr, err := getMetricFromJSON(r)
+	metr, err := getMetricFromJSON(r, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -168,7 +168,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metr, err := getMetricFromJSON(r)
+	metr, err := getMetricFromJSON(r, true)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -183,7 +183,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	s.serverResponceWithJSON(w, m)
 }
 
-func getMetricFromJSON(r *http.Request) (entity.Metrics, error) {
+func getMetricFromJSON(r *http.Request, validateValue bool) (entity.Metrics, error) {
 	var metr entity.Metrics
 	var buf bytes.Buffer
 
@@ -195,7 +195,7 @@ func getMetricFromJSON(r *http.Request) (entity.Metrics, error) {
 		return entity.Metrics{}, errors.New(err.Error())
 	}
 
-	if metr.Delta == nil && metr.Value == nil {
+	if validateValue && metr.Delta == nil && metr.Value == nil {
 		return entity.Metrics{}, errors.New("invalid value or delta")
 	}
 
