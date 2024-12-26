@@ -112,7 +112,13 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	respMetr := entity.Metrics{
 		ID:    metr.ID,
 		MType: metr.MType,
-		Value: &num,
+	}
+	if metr.MType == string(entity.Counter) {
+		num := int64(*metr.Value)
+		respMetr.Delta = &num
+	}
+	if metr.MType == string(entity.Gauge) {
+		respMetr.Value = metr.Value
 	}
 	serverResponceWithJSON(w, respMetr)
 }
@@ -176,7 +182,13 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	respMetr := entity.Metrics{
 		ID:    metr.ID,
 		MType: metr.MType,
-		Value: metr.Value,
+	}
+	if metr.MType == string(entity.Counter) {
+		num := int64(*metr.Value)
+		respMetr.Delta = &num
+	}
+	if metr.MType == string(entity.Gauge) {
+		respMetr.Value = metr.Value
 	}
 	serverResponceWithJSON(w, respMetr)
 }
