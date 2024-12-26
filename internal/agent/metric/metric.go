@@ -82,8 +82,8 @@ func (metric *AgentMetrics) Update() {
 	log.Printf("Update metrics.")
 }
 
-func (metric *AgentMetrics) GetAllGauge() []entity.Metric {
-	list := make([]entity.Metric, 0)
+func (metric *AgentMetrics) GetAllGauge() []Metric {
+	list := make([]Metric, 0)
 	list = append(list,
 		addMetric(entity.Gauge, "Alloc", strconv.FormatFloat(metric.Alloc, 'f', -1, 64)),
 		addMetric(entity.Gauge, "BuckHashSys", strconv.FormatFloat(metric.BuckHashSys, 'f', -1, 64)),
@@ -124,12 +124,12 @@ func (metric *AgentMetrics) GetAllCounter() []string {
 	return list
 }
 
-func (metric *AgentMetrics) GetCounter(name string) entity.Metric {
+func (metric *AgentMetrics) GetCounter(name string) Metric {
 	if name == "PollCount" {
 		log.Printf("Get counter metric. Name: %v.", name)
 		return addMetric(entity.Counter, name, strconv.FormatInt(metric.PollCount, 10))
 	}
-	return entity.Metric{}
+	return Metric{}
 }
 
 func (metric *AgentMetrics) ClearCounter(name string) {
@@ -139,8 +139,8 @@ func (metric *AgentMetrics) ClearCounter(name string) {
 	}
 }
 
-func addMetric(t entity.MetricType, n string, v string) entity.Metric {
-	return entity.Metric{Type: t, Name: n, Value: v}
+func addMetric(t string, n string, v string) Metric {
+	return Metric{Type: t, Name: n, Value: v}
 }
 
 func (metric *AgentMetrics) Log() {
@@ -174,4 +174,10 @@ func (metric *AgentMetrics) Log() {
 	log.Printf("- TotalAlloc: %v.", metric.TotalAlloc)
 	log.Printf("- PollCount: %v.", metric.PollCount)
 	log.Printf("- RandomValue: %v.", metric.RandomValue)
+}
+
+type Metric struct {
+	Type  string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }

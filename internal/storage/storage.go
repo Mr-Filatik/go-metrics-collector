@@ -2,23 +2,23 @@ package storage
 
 import (
 	"errors"
-	"log"
-	"strconv"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 )
 
 type Repository interface {
-	GetAll() []entity.Metric
-	Get(name string) (entity.Metric, error)
-	Create(e entity.Metric) error
-	Update(e entity.Metric) error
-	Remove(e entity.Metric) error
+	GetAll() ([]entity.Metrics, error)
+	Get(id string) (entity.Metrics, error)
+	Create(e entity.Metrics) (entity.Metrics, error)
+	Update(e entity.Metrics) (entity.Metrics, error)
+	Remove(e entity.Metrics) (entity.Metrics, error)
 }
 
 type Storage struct {
 	repository Repository
+	log        logger.Logger
 }
 
 const (
@@ -29,8 +29,11 @@ const (
 	UnexpectedMetricUpdate = "update error"
 )
 
-func New(r Repository) *Storage {
-	return &Storage{repository: r}
+func New(r Repository, l logger.Logger) *Storage {
+	return &Storage{
+		repository: r,
+		log:        l,
+	}
 }
 
 func IsExpectedError(e error) bool {
@@ -41,108 +44,106 @@ func IsExpectedError(e error) bool {
 		err == repository.ErrorMetricNotFound
 }
 
-func (s *Storage) GetAll() []entity.Metric {
+func (s *Storage) GetAll() ([]entity.Metrics, error) {
 	return s.repository.GetAll()
 }
 
-func (s *Storage) Get(t entity.MetricType, n string) (string, error) {
+func (s *Storage) Get(id string, t string) (entity.Metrics, error) {
 	if t != entity.Gauge && t != entity.Counter {
-		reportStorageError(ErrorMetricType, string(t))
-		return "", errors.New(ErrorMetricType)
+		s.reportStorageError(ErrorMetricType, string(t))
+		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
-
-	m, err := s.repository.Get(n)
+	m, err := s.repository.Get(id)
 	if err != nil {
-		return "", errors.New(err.Error())
+		s.reportStorageError(err.Error(), "")
+		return entity.Metrics{}, errors.New(err.Error())
 	}
-	if t == m.Type {
-		log.Printf("Get value: %v %v - %v.", t, n, m.Value)
-		return m.Value, nil
-	} else {
-		reportStorageError(ErrorMetricType, string(t))
-		return "", errors.New(ErrorMetricType)
+	if t != m.MType {
+		s.reportStorageError(ErrorMetricType, string(t))
+		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
+	s.log.Info(
+		"Storage get value",
+		"name", m.ID,
+		"type", m.MType,
+		"value", m.Value,
+	)
+	return m, nil
 }
 
-func (s *Storage) CreateOrUpdate(t entity.MetricType, n string, v string) error {
-	if t != entity.Gauge && t != entity.Counter {
-		reportStorageError(ErrorMetricType, string(t))
-		return errors.New(ErrorMetricType)
+func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
+	if e.MType != entity.Gauge && e.MType != entity.Counter {
+		s.reportStorageError(ErrorMetricType, string(e.MType))
+		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
-
-	m, err := s.repository.Get(n)
+	m, err := s.repository.Get(e.ID)
 	if err != nil {
-		cErr := s.repository.Create(entity.Metric{Name: n, Type: t, Value: v})
-		if cErr != nil {
-			reportStorageError(UnexpectedMetricCreate, n)
-			return errors.New(UnexpectedMetricCreate)
+		im, iErr := s.repository.Create(e)
+		if iErr != nil {
+			s.reportStorageError(iErr.Error(), "")
+			return entity.Metrics{}, errors.New(UnexpectedMetricCreate)
 		}
-		log.Printf("Create value: %v %v - %v.", t, n, v)
+		s.log.Info(
+			"Storage create value",
+			"name", im.ID,
+			"type", im.MType,
+			"value", im.Value,
+			"delta", im.Delta,
+		)
+		return im, nil
 	} else {
-		if t == m.Type {
-			return s.updateMetric(m, v)
+		if e.MType != m.MType {
+			s.reportStorageError(ErrorMetricType, string(e.MType))
+			return entity.Metrics{}, errors.New(ErrorMetricType)
 		}
-		reportStorageError(ErrorMetricType, string(t))
-		return errors.New(ErrorMetricType)
-	}
-	return nil
-}
-
-func (s *Storage) updateMetric(currentMetric entity.Metric, newValue string) error {
-	if currentMetric.Type == entity.Gauge {
-		return s.updateGaugeMetric(currentMetric, newValue)
-	}
-	if currentMetric.Type == entity.Counter {
-		return s.updateCounterMetric(currentMetric, newValue)
-	}
-	return nil
-}
-
-func (s *Storage) updateGaugeMetric(currentMetric entity.Metric, newValue string) error {
-	if num, err := strconv.ParseFloat(newValue, 64); err == nil {
-		newValue = strconv.FormatFloat(num, 'f', -1, 64)
-		uErr := s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
-		if uErr != nil {
-			reportStorageError(UnexpectedMetricUpdate, currentMetric.Name)
-			return errors.New(UnexpectedMetricUpdate)
-		}
-		log.Printf("Update value: %v %v - %v to %v.", currentMetric.Type, currentMetric.Name, currentMetric.Value, newValue)
-		return nil
-	}
-	log.Printf("Mem storage error: %v (value - %v).", ErrorMetricValue, newValue)
-	return errors.New(ErrorMetricValue)
-}
-
-func (s *Storage) updateCounterMetric(currentMetric entity.Metric, newValue string) error {
-	if nnum, err := strconv.ParseInt(newValue, 10, 64); err == nil {
-		if newnum, err2 := strconv.ParseInt(currentMetric.Value, 10, 64); err2 == nil {
-			newnum += nnum
-			newValue = strconv.FormatInt(newnum, 10)
-			uErr := s.repository.Update(entity.Metric{Name: currentMetric.Name, Type: currentMetric.Type, Value: newValue})
-			if uErr != nil {
-				reportStorageError(UnexpectedMetricUpdate, currentMetric.Name)
-				return errors.New(UnexpectedMetricUpdate)
+		if e.MType == entity.Gauge {
+			im, iErr := s.repository.Update(e)
+			if iErr != nil {
+				s.reportStorageError(iErr.Error(), "")
+				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
-			log.Printf("Update value: %v %v - %v to %v.", currentMetric.Type, currentMetric.Name, currentMetric.Value, newValue)
-			return nil
+			s.log.Info(
+				"Storage update value",
+				"name", im.ID,
+				"type", im.MType,
+				"value", im.Value,
+				"delta", im.Delta,
+			)
+			return im, nil
 		}
+		if e.MType == entity.Counter {
+			val := *m.Delta + *e.Delta
+			e.Delta = &val
+			im, iErr := s.repository.Update(e)
+			if iErr != nil {
+				s.reportStorageError(iErr.Error(), "")
+				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
+			}
+			s.log.Info(
+				"Storage update value",
+				"name", im.ID,
+				"type", im.MType,
+				"value", im.Value,
+				"delta", im.Delta,
+			)
+			return im, nil
+		}
+		s.reportStorageError(ErrorMetricType, string(e.MType))
+		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
-	log.Printf("Mem storage error: %v (value - %v).", ErrorMetricValue, newValue)
-	return errors.New(ErrorMetricValue)
 }
 
-func reportStorageError(text string, value string) {
-	if text == ErrorMetricName {
-		log.Printf("Mem storage error: %v (name - %v).", text, value)
-		return
+func (s *Storage) reportStorageError(text string, value string) {
+	if value == "" {
+		s.log.Info(
+			"Storage error",
+			"error", text,
+		)
+	} else {
+		s.log.Info(
+			"Storage error",
+			"error", text,
+			"value", value,
+		)
 	}
-	if text == ErrorMetricType {
-		log.Printf("Mem storage error: %v (type - %v).", text, value)
-		return
-	}
-	if text == ErrorMetricValue {
-		log.Printf("Mem storage error: %v (value - %v).", text, value)
-		return
-	}
-	log.Printf("Mem storage error: %v (name - %v).", text, value)
 }

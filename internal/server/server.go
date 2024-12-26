@@ -3,11 +3,13 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
@@ -18,12 +20,14 @@ import (
 type Server struct {
 	router  *chi.Mux
 	storage *storage.Storage
+	log     logger.Logger
 }
 
-func NewServer(s *storage.Storage) *Server {
+func NewServer(s *storage.Storage, l logger.Logger) *Server {
 	srv := Server{
 		router:  chi.NewRouter(),
 		storage: s,
+		log:     l,
 	}
 	srv.routes()
 	return &srv
@@ -38,7 +42,10 @@ func (s *Server) routes() {
 }
 
 func (s *Server) Start(conf config.Config) {
-	log.Printf("Start server on endpoint %v.", conf.ServerAddress)
+	s.log.Info(
+		"Start server",
+		"endpoint", conf.ServerAddress,
+	)
 	err := http.ListenAndServe(conf.ServerAddress, s.router)
 	if err != nil {
 		log.Fatal(err)
@@ -46,186 +53,191 @@ func (s *Server) Start(conf config.Config) {
 }
 
 func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodGet)
+	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
+	if !ok {
+		return
+	}
 
-	serverResponceWithJSON(w, s.storage.GetAll())
+	mArr, err := s.storage.GetAll()
+	if err != nil {
+		s.serverResponceError(w, err, http.StatusInternalServerError)
+	}
+	s.serverResponceWithJSON(w, mArr)
 }
 
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodGet)
-
-	t := entity.MetricType(r.PathValue("type"))
-	n := r.PathValue("name")
-
-	val, err := s.storage.Get(t, n)
-	if err != nil {
-		if err.Error() == repository.ErrorMetricNotFound {
-			serverResponceError(w, err, http.StatusNotFound)
-			return
-		}
-		reportServerError(w, err, storage.IsExpectedError(err))
+	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
+	if !ok {
+		return
 	}
 
-	_, wErr := w.Write([]byte(val))
-	if wErr != nil {
-		reportServerError(w, wErr, false)
+	m, err := s.storage.Get(r.PathValue("name"), r.PathValue("type"))
+	if err != nil {
+		if err.Error() == repository.ErrorMetricNotFound {
+			s.serverResponceError(w, err, http.StatusNotFound)
+			return
+		}
+		s.reportServerError(w, err, storage.IsExpectedError(err))
+		return
+	}
+
+	if m.MType == entity.Gauge {
+		val := strconv.FormatFloat(*m.Value, 'f', -1, 64)
+		_, wErr := w.Write([]byte(val))
+		if wErr != nil {
+			s.reportServerError(w, wErr, false)
+		}
+	}
+	if m.MType == entity.Counter {
+		val := strconv.FormatInt(*m.Delta, 10)
+		_, wErr := w.Write([]byte(val))
+		if wErr != nil {
+			s.reportServerError(w, wErr, false)
+		}
 	}
 }
 
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodPost)
+	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
+	if !ok {
+		return
+	}
 
-	var metr entity.Metrics
-	var buf bytes.Buffer
-
-	_, err := buf.ReadFrom(r.Body)
+	metr, err := getMetricFromJson(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	t := entity.MetricType(metr.MType)
-	n := metr.ID
-
-	val, err := s.storage.Get(t, n)
+	m, err := s.storage.Get(metr.ID, metr.MType)
 	if err != nil {
 		if storage.IsExpectedError(err) {
 			if err.Error() == repository.ErrorMetricNotFound {
-				serverResponceError(w, err, http.StatusNotFound)
+				s.serverResponceError(w, err, http.StatusNotFound)
 				return
 			}
-			reportServerError(w, err, true)
+			s.reportServerError(w, err, true)
 		} else {
-			reportServerError(w, err, false)
+			s.reportServerError(w, err, false)
 		}
-	}
-	num, err := strconv.ParseFloat(val, 64)
-	if err != nil {
-		reportServerError(w, err, storage.IsExpectedError(err))
+		return
 	}
 
-	respMetr := entity.Metrics{
-		ID:    metr.ID,
-		MType: metr.MType,
-	}
-	if metr.MType == string(entity.Counter) {
-		num2 := int64(num)
-		respMetr.Delta = &num2
-	}
-	if metr.MType == string(entity.Gauge) {
-		respMetr.Value = &num
-	}
-	serverResponceWithJSON(w, respMetr)
+	s.serverResponceWithJSON(w, m)
 }
 
 func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodPost)
+	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
+	if !ok {
+		return
+	}
 
-	t := entity.MetricType(r.PathValue("type"))
-	n := r.PathValue("name")
-	v := r.PathValue("value")
+	val := r.PathValue("value")
+	metr := entity.Metrics{
+		ID:    r.PathValue("name"),
+		MType: r.PathValue("type"),
+	}
+	if metr.MType == entity.Gauge {
+		num, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			s.reportServerError(w, err, true)
+			return
+		}
+		metr.Value = &num
+	}
+	if metr.MType == entity.Counter {
+		num, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			s.reportServerError(w, err, true)
+			return
+		}
+		metr.Delta = &num
+	}
 
-	err := s.storage.CreateOrUpdate(t, n, v)
+	_, err := s.storage.CreateOrUpdate(metr)
 	if err != nil {
-		reportServerError(w, err, storage.IsExpectedError(err))
+		s.reportServerError(w, err, storage.IsExpectedError(err))
 	}
 }
 
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	checkRequestMethod(w, r.Method, http.MethodPost)
+	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
+	if !ok {
+		return
+	}
 
+	metr, err := getMetricFromJson(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	m, err := s.storage.CreateOrUpdate(metr)
+	if err != nil {
+		s.reportServerError(w, err, storage.IsExpectedError(err))
+		return
+	}
+
+	s.serverResponceWithJSON(w, m)
+}
+
+func getMetricFromJson(r *http.Request) (entity.Metrics, error) {
 	var metr entity.Metrics
 	var buf bytes.Buffer
 
-	_, err := buf.ReadFrom(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		return entity.Metrics{}, errors.New(err.Error())
 	}
 
 	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return entity.Metrics{}, errors.New(err.Error())
 	}
-
-	t := entity.MetricType(metr.MType)
-	n := metr.ID
 
 	if metr.Delta == nil && metr.Value == nil {
-		http.Error(w, "invalid values", http.StatusBadRequest)
-		return
-	}
-	var val float64
-	if metr.Value != nil {
-		val = *metr.Value
-	}
-	if metr.Delta != nil {
-		val = float64(*metr.Delta)
+		return entity.Metrics{}, errors.New("invalid value or delta")
 	}
 
-	err = s.storage.CreateOrUpdate(t, n, strconv.FormatFloat(val, 'f', -1, 64))
-	if err != nil {
-		reportServerError(w, err, storage.IsExpectedError(err))
-	}
-	newsval, err := s.storage.Get(t, n)
-	if err == nil {
-		if nv, nerr := strconv.ParseFloat(newsval, 64); nerr == nil {
-			metr.Value = &nv
-		}
-	}
-
-	respMetr := entity.Metrics{
-		ID:    metr.ID,
-		MType: metr.MType,
-	}
-	if metr.MType == string(entity.Counter) {
-		num := int64(*metr.Value)
-		respMetr.Delta = &num
-	}
-	if metr.MType == string(entity.Gauge) {
-		respMetr.Value = metr.Value
-	}
-	serverResponceWithJSON(w, respMetr)
+	return metr, nil
 }
 
-func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
+func (s *Server) validateRequestMethod(w http.ResponseWriter, current string, needed string) bool {
 	if current != needed {
-		log.Printf("Invalid request type %v, needed %v.", current, needed)
-		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
-		return
+		s.log.Info(
+			"Invalid request method",
+			"actual", current,
+			"expected", needed,
+		)
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return false
 	}
+	return true
 }
 
-func serverResponceWithJSON(w http.ResponseWriter, v any) {
+func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
 	res, err := json.Marshal(v)
 	if err != nil {
-		serverResponceError(w, err, http.StatusInternalServerError)
+		s.serverResponceError(w, err, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
 	if err != nil {
-		serverResponceError(w, err, http.StatusInternalServerError)
+		s.serverResponceError(w, err, http.StatusInternalServerError)
 		return
 	}
 }
 
-func serverResponceError(w http.ResponseWriter, err error, status int) {
-	log.Printf("Server error: %v.", err.Error())
+func (s *Server) serverResponceError(w http.ResponseWriter, err error, status int) {
+	//log.Printf("Server error: %v.", err.Error())
 	http.Error(w, "Error: "+err.Error(), status)
 }
 
-func reportServerError(w http.ResponseWriter, e error, isExpected bool) {
+func (s *Server) reportServerError(w http.ResponseWriter, e error, isExpected bool) {
 	if isExpected {
-		serverResponceError(w, e, http.StatusBadRequest)
+		s.serverResponceError(w, e, http.StatusBadRequest)
 	} else {
-		log.Printf("Unexpected server error: %v.", e.Error())
+		//log.Printf("Unexpected server error: %v.", e.Error())
 		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
 	}
 }

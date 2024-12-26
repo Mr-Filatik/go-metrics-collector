@@ -2,9 +2,7 @@ package middleware
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/google/uuid"
 	"github.com/urfave/negroni"
 )
@@ -27,32 +25,32 @@ func WithLogging(next http.Handler) http.Handler {
 		if r.Header.Get("X-Request-Id") == "" {
 			r.Header.Set("X-Request-Id", uuid.New().String())
 		}
-		startTime := time.Now().UTC()
-		requestID := r.Header.Get("X-Request-Id")
+		// startTime := time.Now().UTC()
+		// requestID := r.Header.Get("X-Request-Id")
 
 		lwr := negroni.NewResponseWriter(w)
 
 		next.ServeHTTP(lwr, r)
 
-		logger.Info(
-			"Request",
-			"request_id", requestID,
-			"request_method", r.Method,
-			"request_uri", r.RequestURI,
-			"request_time", startTime.String(),
-			"request_duration", time.Since(startTime),
-		)
+		// logger.Info(
+		// 	"Request",
+		// 	"request_id", requestID,
+		// 	"request_method", r.Method,
+		// 	"request_uri", r.RequestURI,
+		// 	"request_time", startTime.String(),
+		// 	"request_duration", time.Since(startTime),
+		// )
 
 		statusCode := lwr.Status()
 		if statusCode == 0 {
 			statusCode = http.StatusOK
 		}
 
-		logger.Info(
-			"Responce",
-			"request_id", requestID,
-			"status", statusCode,
-			"content_lenght", lwr.Size(),
-		)
+		// logger.Info(
+		// 	"Responce",
+		// 	"request_id", requestID,
+		// 	"status", statusCode,
+		// 	"content_lenght", lwr.Size(),
+		// )
 	})
 }

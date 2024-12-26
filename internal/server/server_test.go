@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestGetAllMetrics(t *testing.T) {
 		method             string
 		path               string
 		parameters         map[string]string
-		mockCreateOrUpdate func(t entity.MetricType, n, v string) error
+		mockCreateOrUpdate func(t string, n, v string) error
 		expectedStatus     int
 		expectedBody       string
 	}{
@@ -35,10 +35,13 @@ func TestGetAllMetrics(t *testing.T) {
 		},
 	}
 
+	log := logger.New()
+	defer log.Close()
 	repo := repository.New()
-	stor := storage.New(repo)
+	stor := storage.New(repo, log)
 	serv := &Server{
 		storage: stor,
+		log:     log,
 	}
 
 	for _, tt := range tests {
@@ -60,7 +63,7 @@ func TestGetMetric(t *testing.T) {
 		method             string
 		path               string
 		parameters         map[string]string
-		mockCreateOrUpdate func(t entity.MetricType, n, v string) error
+		mockCreateOrUpdate func(t string, n, v string) error
 		expectedStatus     int
 		expectedBody       string
 	}{
@@ -90,10 +93,13 @@ func TestGetMetric(t *testing.T) {
 		},
 	}
 
+	log := logger.New()
+	defer log.Close()
 	repo := repository.New()
-	stor := storage.New(repo)
+	stor := storage.New(repo, log)
 	serv := &Server{
 		storage: stor,
+		log:     log,
 	}
 
 	for _, tt := range tests {
@@ -117,7 +123,7 @@ func TestUpdateMetric(t *testing.T) {
 		method             string
 		path               string
 		parameters         map[string]string
-		mockCreateOrUpdate func(t entity.MetricType, n, v string) error
+		mockCreateOrUpdate func(t string, n, v string) error
 		expectedStatus     int
 		expectedBody       string
 	}{
@@ -147,10 +153,13 @@ func TestUpdateMetric(t *testing.T) {
 		},
 	}
 
+	log := logger.New()
+	defer log.Close()
 	repo := repository.New()
-	stor := storage.New(repo)
+	stor := storage.New(repo, log)
 	serv := &Server{
 		storage: stor,
+		log:     log,
 	}
 
 	for _, tt := range tests {

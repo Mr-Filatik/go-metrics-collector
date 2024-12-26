@@ -1,22 +1,21 @@
 package main
 
 import (
-	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server"
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
-	"go.uber.org/zap/zapcore"
 )
 
 func main() {
-	logger.Initialize(zapcore.InfoLevel)
-	defer logger.Close()
+	log := logger.New()
+	defer log.Close()
 
 	conf := config.Initialize()
 	repo := repository.New()
-	stor := storage.New(repo)
+	stor := storage.New(repo, log)
 
-	serv := server.NewServer(stor)
+	serv := server.NewServer(stor, log)
 	serv.Start(*conf)
 }
