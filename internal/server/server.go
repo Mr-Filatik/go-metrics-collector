@@ -114,11 +114,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		MType: metr.MType,
 	}
 	if metr.MType == string(entity.Counter) {
-		num := int64(*metr.Value)
-		respMetr.Delta = &num
+		num2 := int64(num)
+		respMetr.Delta = &num2
 	}
 	if metr.MType == string(entity.Gauge) {
-		respMetr.Value = metr.Value
+		respMetr.Value = &num
 	}
 	serverResponceWithJSON(w, respMetr)
 }
