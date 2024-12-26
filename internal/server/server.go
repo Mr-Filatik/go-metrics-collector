@@ -109,8 +109,12 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		reportServerError(w, err, storage.IsExpectedError(err))
 	}
 
-	metr.Value = &num
-	serverResponceWithJSON(w, metr)
+	respMetr := entity.Metrics{
+		ID:    metr.ID,
+		MType: metr.MType,
+		Value: &num,
+	}
+	serverResponceWithJSON(w, respMetr)
 }
 
 func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +173,12 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	serverResponceWithJSON(w, metr)
+	respMetr := entity.Metrics{
+		ID:    metr.ID,
+		MType: metr.MType,
+		Value: metr.Value,
+	}
+	serverResponceWithJSON(w, respMetr)
 }
 
 func checkRequestMethod(w http.ResponseWriter, current string, needed string) {
