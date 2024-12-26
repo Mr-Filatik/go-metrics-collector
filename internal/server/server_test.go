@@ -36,7 +36,6 @@ func TestGetAllMetrics(t *testing.T) {
 	}
 
 	log := logger.New()
-	defer log.Close()
 	repo := repository.New()
 	stor := storage.New(repo, log)
 	serv := &Server{
@@ -94,7 +93,6 @@ func TestGetMetric(t *testing.T) {
 	}
 
 	log := logger.New()
-	defer log.Close()
 	repo := repository.New()
 	stor := storage.New(repo, log)
 	serv := &Server{
@@ -154,7 +152,6 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	log := logger.New()
-	defer log.Close()
 	repo := repository.New()
 	stor := storage.New(repo, log)
 	serv := &Server{

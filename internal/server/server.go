@@ -18,27 +18,29 @@ import (
 )
 
 type Server struct {
-	router  *chi.Mux
-	storage *storage.Storage
-	log     logger.Logger
+	router   *chi.Mux
+	storage  *storage.Storage
+	conveyor *middleware.Conveyor
+	log      logger.Logger
 }
 
 func NewServer(s *storage.Storage, l logger.Logger) *Server {
 	srv := Server{
-		router:  chi.NewRouter(),
-		storage: s,
-		log:     l,
+		router:   chi.NewRouter(),
+		storage:  s,
+		conveyor: middleware.New(l),
+		log:      l,
 	}
 	srv.routes()
 	return &srv
 }
 
 func (s *Server) routes() {
-	s.router.Handle("/", middleware.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/value/", middleware.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
-	s.router.Handle("/update/", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
-	s.router.Handle("/value/{type}/{name}", middleware.MainConveyor(http.HandlerFunc(s.GetMetric)))
-	s.router.Handle("/update/{type}/{name}/{value}", middleware.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
+	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
+	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
+	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
+	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
 
 func (s *Server) Start(conf config.Config) {

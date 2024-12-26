@@ -11,7 +11,7 @@ func New() *ZapSugarLogger {
 	if err != nil {
 		panic(err)
 	}
-	zslog := ZapSugarLogger{
+	zslog := &ZapSugarLogger{
 		logger: log.Sugar(),
 	}
 	zslog.Info(
@@ -19,7 +19,7 @@ func New() *ZapSugarLogger {
 		"name", "ZapSugarLogger",
 		"level", "info",
 	)
-	return &zslog
+	return zslog
 }
 
 func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
