@@ -52,10 +52,11 @@ func (c *Conveyor) WithGzipSupport(next http.Handler) http.Handler {
 
 type gzipWriter struct {
 	http.ResponseWriter
-	Writer io.Writer
+	Writer io.WriteCloser
 }
 
 func (w *gzipWriter) Write(b []byte) (int, error) {
+	defer w.Writer.Close()
 	return w.Writer.Write(b)
 }
 
