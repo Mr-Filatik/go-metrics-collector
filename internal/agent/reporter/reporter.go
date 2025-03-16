@@ -23,25 +23,18 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 		client := resty.New()
 
 		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-			body := r.Body
-			log.Printf("Request body: %v  (%v)", len(body.([]byte)), string(body.([]byte)))
 			if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+				body := r.Body
 				if body != nil {
 					compressedBody, err := compressBody(body.([]byte))
 					if err != nil {
-						log.Printf("Request compress body error: %v", err.Error())
+						log.Printf("Compress body error: %v", err.Error())
 					} else {
-						log.Printf("Request compress body: %v (%v)", len(compressedBody), string(compressedBody))
+						log.Printf("Compress body: %v -> %v", len(body.([]byte)), len(compressedBody))
 						r.SetBody(compressedBody)
-						r.Header.Add("Content-Length", strconv.FormatInt((int64(len(compressedBody))), 10))
 					}
 				} else {
-					log.Printf("Request compress body error: body is empty")
-				}
-			}
-			for name, values := range r.Header {
-				for _, value := range values {
-					log.Printf("Request header: %v: %v", name, value)
+					log.Printf("Compress body error: body is empty")
 				}
 			}
 			return nil
@@ -53,18 +46,16 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					log.Printf("Response header: %v: %v", name, value)
 				}
 			}
-			body := r.Body()
-			log.Printf("Response body: %v (%v)", len(body), string(body))
 			if strings.Contains(r.Header().Get("Content-Encoding"), "gzip") {
-				val, err := decompressBody(body)
+				val, err := decompressBody(r.Body())
 				if err != nil {
 					if err.Error() == "gzip: invalid header" {
-						log.Printf("Response decompress body error: body not compress")
+						log.Printf("Decompress body error: body not compress")
 					} else {
-						log.Printf("Response decompress body error: %v", err.Error())
+						log.Printf("Decompress body error: %v", err.Error())
 					}
 				} else {
-					log.Printf("Response decompress body: %v (%v)", len(val), string(val))
+					log.Printf("Decompress body: %v -> %v", len(r.Body()), len(val))
 					r.SetBody(val)
 				}
 			}
@@ -118,7 +109,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				address := endpoint + "/update/"
 				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, metr.Value, *metr.Delta)
 				resp, rerr := client.R().
-					SetHeader("Content-Type", "application/json").
+					SetHeader("Content-Type", " application/json").
 					SetHeader("Content-Encoding", "gzip").
 					SetHeader("Accept-Encoding", "gzip").
 					SetBody(dat).
@@ -128,6 +119,18 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					log.Printf("Error on response: %v.", rerr.Error())
 					continue
 				}
+
+				// if resp.Request.Header.Get("Accept-Encoding") == "gzip" {
+				// 	log.Printf("Body len: %v.", len(resp.Body()))
+				// 	result, err := decompressBody(resp.Body())
+				// 	if err != nil {
+				// 		log.Printf("Error on decompress body: %v.", err.Error())
+				// 		continue
+				// 	}
+				// 	m.ClearCounter(el)
+				// 	log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(result))
+				// 	continue
+				// }
 
 				m.ClearCounter(el)
 				log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
