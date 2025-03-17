@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 )
@@ -11,7 +13,8 @@ type MemRepository struct {
 }
 
 const (
-	ErrorMetricNotFound = "metric not found"
+	ErrorMetricNotFound             = "metric not found"
+	filePermission      os.FileMode = 0o600
 )
 
 func New() *MemRepository {
@@ -81,4 +84,38 @@ func (r *MemRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
 	}
 	r.datas = newDatas
 	return e, nil
+}
+
+func (r *MemRepository) LoadData(filePath string) error {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return errors.New("file does not exist")
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return errors.New("failed to read metrics from file")
+	}
+
+	var metrics []entity.Metrics
+	err = json.Unmarshal(data, &metrics)
+	if err != nil {
+		return errors.New("failed to deserialize metrics")
+	}
+
+	r.datas = metrics
+	return nil
+}
+
+func (r *MemRepository) SaveData(filePath string) error {
+	data, err := json.MarshalIndent(r.datas, "", "  ")
+	if err != nil {
+		return errors.New("failed to serialize metrics")
+	}
+
+	err = os.WriteFile(filePath, data, filePermission)
+	if err != nil {
+		return errors.New("failed to write metrics to file")
+	}
+
+	return nil
 }

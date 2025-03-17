@@ -38,6 +38,9 @@ metricstest-windows-amd64 -test.v -test.run=^TestIteration7$ -agent-binary-path=
 echo Run TestIteration8
 metricstest-windows-amd64 -test.v -test.run=^TestIteration8$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8080 -source-path=.
 
+echo Run TestIteration9
+metricstest-windows-amd64 -test.v -test.run=^TestIteration9$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=../../temp_metrics_test.json -server-port=8080 -source-path=.
+
 pause
 
 echo on

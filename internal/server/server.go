@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
@@ -18,10 +19,11 @@ import (
 )
 
 type Server struct {
-	router   *chi.Mux
-	storage  *storage.Storage
-	conveyor *middleware.Conveyor
-	log      logger.Logger
+	router          *chi.Mux
+	storage         *storage.Storage
+	conveyor        *middleware.Conveyor
+	log             logger.Logger
+	syncSaveEnabled bool
 }
 
 func NewServer(s *storage.Storage, l logger.Logger) *Server {
@@ -44,13 +46,39 @@ func (s *Server) routes() {
 }
 
 func (s *Server) Start(conf config.Config) {
+	s.syncSaveEnabled = conf.StoreInterval == 0
+
+	if conf.Restore {
+		err := s.storage.LoadData()
+		if err != nil {
+			s.log.Info(
+				"Load data error",
+				"reason", err.Error(),
+			)
+		}
+	}
+
+	if !s.syncSaveEnabled {
+		go s.saveDataWithInterval(conf.StoreInterval)
+	}
+
 	s.log.Info(
 		"Start server",
 		"endpoint", conf.ServerAddress,
+		"file path", conf.FileStoragePath,
+		"interval", conf.StoreInterval,
+		"restore data", conf.Restore,
 	)
 	err := http.ListenAndServe(conf.ServerAddress, s.router)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	serr := s.storage.SaveData()
+	if serr != nil {
+		s.log.Info(
+			"Final save in file ERROR",
+		)
 	}
 }
 
@@ -160,6 +188,17 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.reportServerError(w, err, storage.IsExpectedError(err))
 	}
+	if s.syncSaveEnabled {
+		serr := s.storage.SaveData()
+		if serr != nil {
+			http.Error(w, "Unexpected error with file.", http.StatusInternalServerError)
+			return
+		}
+		s.log.Info(
+			"Save in file is DONE",
+			"time", time.Now(),
+		)
+	}
 }
 
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +217,17 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.reportServerError(w, err, storage.IsExpectedError(err))
 		return
+	}
+	if s.syncSaveEnabled {
+		serr := s.storage.SaveData()
+		if serr != nil {
+			http.Error(w, "Unexpected error with file.", http.StatusInternalServerError)
+			return
+		}
+		s.log.Info(
+			"Save in file is DONE",
+			"time", time.Now(),
+		)
 	}
 
 	s.serverResponceWithJSON(w, m)
@@ -246,5 +296,22 @@ func (s *Server) reportServerError(w http.ResponseWriter, e error, isExpected bo
 			"error", e.Error(),
 		)
 		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) saveDataWithInterval(interval int64) {
+	t := time.Tick(time.Duration(interval) * time.Second)
+
+	for range t {
+		serr := s.storage.SaveData()
+		if serr != nil {
+			s.log.Info(
+				"Save in file ERROR",
+			)
+		}
+		s.log.Info(
+			"Save in file is DONE",
+			"time", time.Now(),
+		)
 	}
 }

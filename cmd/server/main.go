@@ -14,7 +14,7 @@ func main() {
 
 	conf := config.Initialize()
 	repo := repository.New()
-	stor := storage.New(repo, log)
+	stor := storage.New(repo, log, conf.FileStoragePath)
 
 	serv := server.NewServer(stor, log)
 	serv.Start(*conf)

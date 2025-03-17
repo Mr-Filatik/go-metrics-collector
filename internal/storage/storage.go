@@ -14,11 +14,14 @@ type Repository interface {
 	Create(e entity.Metrics) (entity.Metrics, error)
 	Update(e entity.Metrics) (entity.Metrics, error)
 	Remove(e entity.Metrics) (entity.Metrics, error)
+	LoadData(filePath string) error
+	SaveData(filePath string) error
 }
 
 type Storage struct {
 	repository Repository
 	log        logger.Logger
+	filePath   string
 }
 
 const (
@@ -29,10 +32,11 @@ const (
 	UnexpectedMetricUpdate = "update error"
 )
 
-func New(r Repository, l logger.Logger) *Storage {
+func New(r Repository, l logger.Logger, filePath string) *Storage {
 	return &Storage{
 		repository: r,
 		log:        l,
+		filePath:   filePath,
 	}
 }
 
@@ -112,6 +116,22 @@ func (s *Storage) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 		s.reportStorageError(ErrorMetricType, e.MType)
 		return entity.Metrics{}, errors.New(ErrorMetricType)
 	}
+}
+
+func (s *Storage) LoadData() error {
+	err := s.repository.LoadData(s.filePath)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+	return nil
+}
+
+func (s *Storage) SaveData() error {
+	err := s.repository.SaveData(s.filePath)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+	return nil
 }
 
 func (s *Storage) reportStorageError(text string, value string) {
