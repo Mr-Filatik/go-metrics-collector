@@ -17,7 +17,9 @@ import (
 )
 
 const (
-	EncodingType = "gzip"
+	EncodingType          = "gzip"
+	ContentEncodingHeader = "Content-Encoding"
+	AcceptEncodingHeader  = "Accept-Encoding"
 )
 
 func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
@@ -27,7 +29,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 		client := resty.New()
 
 		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-			if strings.Contains(r.Header.Get("Content-Encoding"), EncodingType) {
+			if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
 				body := r.Body
 				if body != nil {
 					compressedBody, err := compressBody(body.([]byte))
@@ -50,7 +52,7 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					log.Printf("Response header: %v: %v", name, value)
 				}
 			}
-			if strings.Contains(r.Header().Get("Content-Encoding"), EncodingType) {
+			if strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
 				val, err := decompressBody(r.Body())
 				if err != nil {
 					if err.Error() == "gzip: invalid header" {
@@ -84,8 +86,8 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, *metr.Value, metr.Delta)
 				resp, err := client.R().
 					SetHeader("Content-Type", "application/json").
-					SetHeader("Content-Encoding", EncodingType).
-					SetHeader("Accept-Encoding", EncodingType).
+					SetHeader(ContentEncodingHeader, EncodingType).
+					SetHeader(AcceptEncodingHeader, EncodingType).
 					SetBody(dat).
 					Post(address)
 
@@ -116,8 +118,8 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, metr.Value, *metr.Delta)
 				resp, rerr := client.R().
 					SetHeader("Content-Type", "application/json").
-					SetHeader("Content-Encoding", EncodingType).
-					SetHeader("Accept-Encoding", EncodingType).
+					SetHeader(ContentEncodingHeader, EncodingType).
+					SetHeader(AcceptEncodingHeader, EncodingType).
 					SetBody(dat).
 					Post(address)
 
@@ -148,12 +150,12 @@ func compressBody(data []byte) ([]byte, error) {
 func decompressBody(data []byte) ([]byte, error) {
 	gr, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err.Error())
 	}
 	var buf bytes.Buffer
-	_, err = io.Copy(&buf, gr)
+	_, err = io.CopyN(&buf, gr, int64(buf.Len()))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err.Error())
 	}
 	if err := gr.Close(); err != nil {
 		return nil, errors.New(err.Error())

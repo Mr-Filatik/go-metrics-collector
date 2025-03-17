@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -80,7 +81,11 @@ func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 				http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
 				return
 			}
-			defer gz.Close()
+			defer func() {
+				if err := gz.Close(); err != nil {
+					http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
+				}
+			}()
 			r.Body = gz
 		}
 
@@ -88,7 +93,11 @@ func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 		isType = strings.Contains(valueAccept, "application/json") || strings.Contains(valueAccept, "text/html")
 		if isType && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			gz := gzip.NewWriter(w)
-			defer gz.Close()
+			defer func() {
+				if err := gz.Close(); err != nil {
+					http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
+				}
+			}()
 
 			w.Header().Set("Content-Encoding", "gzip")
 			w.Header().Set("Content-Type", valueAccept)
@@ -105,7 +114,11 @@ type gzipResponseWriter struct {
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+	num, err := w.Writer.Write(b)
+	if err != nil {
+		return num, errors.New(err.Error())
+	}
+	return num, nil
 }
 
 func (w *gzipResponseWriter) WriteHeader(statusCode int) {
