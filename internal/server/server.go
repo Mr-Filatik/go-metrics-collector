@@ -221,7 +221,6 @@ func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
 		s.serverResponceError(w, err, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
 	if err != nil {

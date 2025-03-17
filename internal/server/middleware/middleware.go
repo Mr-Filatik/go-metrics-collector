@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"compress/gzip"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
@@ -22,7 +25,7 @@ func New(l logger.Logger) *Conveyor {
 type Middleware func(http.Handler) http.Handler
 
 func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
-	return c.registerConveyor(h, c.WithLogging)
+	return c.registerConveyor(h, c.WithCompressedGzip, c.WithLogging)
 }
 
 func (c *Conveyor) registerConveyor(h http.Handler, ms ...Middleware) http.Handler {
@@ -65,4 +68,46 @@ func (c *Conveyor) WithLogging(next http.Handler) http.Handler {
 			"content_lenght", lwr.Size(),
 		)
 	})
+}
+
+func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		valueContent := r.Header.Get("Content-Type")
+		isType := strings.Contains(valueContent, "application/json") || strings.Contains(valueContent, "text/html")
+		if isType && strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
+				return
+			}
+			defer gz.Close()
+			r.Body = gz
+		}
+
+		valueAccept := r.Header.Get("Accept")
+		isType = strings.Contains(valueAccept, "application/json") || strings.Contains(valueAccept, "text/html")
+		if isType && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			gz := gzip.NewWriter(w)
+			defer gz.Close()
+
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Content-Type", valueAccept)
+			w = &gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func (w *gzipResponseWriter) WriteHeader(statusCode int) {
+	w.ResponseWriter.WriteHeader(statusCode)
 }
