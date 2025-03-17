@@ -32,11 +32,18 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 			if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
 				body := r.Body
 				if body != nil {
-					compressedBody, err := compressBody(body.([]byte))
+					byteBody, ok := body.([]byte)
+					if !ok {
+						log.Printf("Body does not exist")
+						return nil
+					}
+					compressedBody, err := compressBody(byteBody)
 					if err != nil {
 						log.Printf("Compress body error: %v", err.Error())
-					} else {
-						log.Printf("Compress body: %v -> %v", len(body.([]byte)), len(compressedBody))
+						return nil
+					}
+					if compressedBody != nil {
+						log.Printf("Compress body: %v -> %v", len(byteBody), len(compressedBody))
 						r.SetBody(compressedBody)
 					}
 				} else {
@@ -60,10 +67,10 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 					} else {
 						log.Printf("Decompress body error: %v", err.Error())
 					}
-				} else {
-					log.Printf("Decompress body: %v -> %v", len(r.Body()), len(val))
-					r.SetBody(val)
+					return nil
 				}
+				log.Printf("Decompress body: %v -> %v", len(r.Body()), len(val))
+				r.SetBody(val)
 			}
 			return nil
 		})
