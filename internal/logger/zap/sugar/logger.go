@@ -29,7 +29,7 @@ func New(minLogLevel LogLevel) *ZapSugarLogger {
 	zslog.Info(
 		"Create logger",
 		"name", "ZapSugarLogger",
-		"level", zslog.minLogLevel,
+		"level", logger.GetLevelName(zslog.minLogLevel),
 	)
 	return zslog
 }
@@ -49,6 +49,13 @@ func (l *ZapSugarLogger) Debug(message string, keysAndValues ...interface{}) {
 func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
 	if LevelInfo >= l.minLogLevel {
 		l.logger.Infow(message, keysAndValues...)
+	}
+}
+
+func (l *ZapSugarLogger) Error(message string, err error, keysAndValues ...interface{}) {
+	if LevelInfo >= l.minLogLevel {
+		addKeysAndValues := append([]interface{}{"reason", err.Error()}, keysAndValues...)
+		l.logger.Infow(message, addKeysAndValues...)
 	}
 }
 

@@ -51,10 +51,7 @@ func (s *Server) Start(conf config.Config) {
 	if conf.Restore {
 		err := s.storage.LoadData()
 		if err != nil {
-			s.log.Info(
-				"Load data error",
-				"reason", err.Error(),
-			)
+			s.log.Error("The data from the file was not loaded", err)
 		}
 	}
 
@@ -76,9 +73,7 @@ func (s *Server) Start(conf config.Config) {
 
 	serr := s.storage.SaveData()
 	if serr != nil {
-		s.log.Info(
-			"Final save in file ERROR",
-		)
+		s.log.Error("No data was saved after the server was stopped", err)
 	}
 }
 

@@ -150,7 +150,7 @@ func (s *Storage) reportStorageError(text string, value string) {
 }
 
 func (s *Storage) reportMetricInfo(t string, m entity.Metrics) {
-	s.log.Info(
+	s.log.Debug(
 		t,
 		"name", m.ID,
 		"type", m.MType,
