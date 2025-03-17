@@ -36,7 +36,7 @@ func TestGetAllMetrics(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New()
+	repo := repository.New(log)
 	stor := storage.New(repo, log, "")
 	serv := &Server{
 		storage: stor,
@@ -93,7 +93,7 @@ func TestGetMetric(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New()
+	repo := repository.New(log)
 	stor := storage.New(repo, log, "")
 	serv := &Server{
 		storage: stor,
@@ -152,7 +152,7 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New()
+	repo := repository.New(log)
 	stor := storage.New(repo, log, "")
 	serv := &Server{
 		storage: stor,

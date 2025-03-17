@@ -9,11 +9,11 @@ import (
 )
 
 func main() {
-	log := logger.New(logger.LevelDebug)
+	log := logger.New(logger.LevelInfo)
 	defer log.Close()
 
 	conf := config.Initialize()
-	repo := repository.New()
+	repo := repository.New(log)
 	stor := storage.New(repo, log, conf.FileStoragePath)
 
 	serv := server.NewServer(stor, log)

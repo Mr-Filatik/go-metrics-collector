@@ -11,7 +11,6 @@ import (
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
@@ -52,6 +51,8 @@ func (s *Server) Start(conf config.Config) {
 		err := s.storage.LoadData()
 		if err != nil {
 			s.log.Error("The data from the file was not loaded", err)
+		} else {
+			s.log.Info("The data from the file has been loaded")
 		}
 	}
 
@@ -74,6 +75,8 @@ func (s *Server) Start(conf config.Config) {
 	serr := s.storage.SaveData()
 	if serr != nil {
 		s.log.Error("No data was saved after the server was stopped", err)
+	} else {
+		s.log.Info("After the server was stopped, the data was saved")
 	}
 }
 
@@ -85,7 +88,8 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	mArr, err := s.storage.GetAll()
 	if err != nil {
-		s.serverResponceError(w, err, http.StatusInternalServerError)
+		s.serverResponceInternalServerError(w, err)
+		return
 	}
 	s.serverResponceWithJSON(w, mArr)
 }
@@ -96,29 +100,35 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.storage.Get(r.PathValue("name"), r.PathValue("type"))
-	if err != nil {
-		if err.Error() == repository.ErrorMetricNotFound {
-			s.serverResponceError(w, err, http.StatusNotFound)
-			return
-		}
-		s.reportServerError(w, err, storage.IsExpectedError(err))
+	metr, merr := getMetricFromRequest(r, false)
+	if merr != nil {
+		s.serverResponceBadRequest(w, merr)
 		return
 	}
 
-	if m.MType == entity.Gauge {
-		val := strconv.FormatFloat(*m.Value, 'f', -1, 64)
-		_, wErr := w.Write([]byte(val))
-		if wErr != nil {
-			s.reportServerError(w, wErr, false)
+	m, err := s.storage.Get(metr.ID, metr.MType)
+	if err != nil {
+		if err.Error() == storage.MetricNotFound {
+			s.serverResponceNotFound(w, err)
+			return
 		}
+		if err.Error() == storage.MetricUncorrect {
+			s.serverResponceBadRequest(w, err)
+			return
+		}
+		s.serverResponceInternalServerError(w, err)
+		return
+	}
+
+	val := ""
+	if m.MType == entity.Gauge {
+		val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
 	}
 	if m.MType == entity.Counter {
-		val := strconv.FormatInt(*m.Delta, 10)
-		_, wErr := w.Write([]byte(val))
-		if wErr != nil {
-			s.reportServerError(w, wErr, false)
-		}
+		val = strconv.FormatInt(*m.Delta, 10)
+	}
+	if _, wErr := w.Write([]byte(val)); wErr != nil {
+		s.serverResponceInternalServerError(w, wErr)
 	}
 }
 
@@ -130,21 +140,21 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	metr, err := getMetricFromJSON(r, false)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.serverResponceBadRequest(w, err)
 		return
 	}
 
 	m, err := s.storage.Get(metr.ID, metr.MType)
 	if err != nil {
-		if storage.IsExpectedError(err) {
-			if err.Error() == repository.ErrorMetricNotFound {
-				s.serverResponceError(w, err, http.StatusNotFound)
-				return
-			}
-			s.reportServerError(w, err, true)
-		} else {
-			s.reportServerError(w, err, false)
+		if err.Error() == storage.MetricNotFound {
+			s.serverResponceNotFound(w, err)
+			return
 		}
+		if err.Error() == storage.MetricUncorrect {
+			s.serverResponceBadRequest(w, err)
+			return
+		}
+		s.serverResponceInternalServerError(w, err)
 		return
 	}
 
@@ -157,36 +167,25 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.PathValue("value")
-	metr := entity.Metrics{
-		ID:    r.PathValue("name"),
-		MType: r.PathValue("type"),
-	}
-	if metr.MType == entity.Gauge {
-		num, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			s.reportServerError(w, err, true)
-			return
-		}
-		metr.Value = &num
-	}
-	if metr.MType == entity.Counter {
-		num, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			s.reportServerError(w, err, true)
-			return
-		}
-		metr.Delta = &num
+	metr, merr := getMetricFromRequest(r, true)
+	if merr != nil {
+		s.serverResponceBadRequest(w, merr)
+		return
 	}
 
 	_, err := s.storage.CreateOrUpdate(metr)
 	if err != nil {
-		s.reportServerError(w, err, storage.IsExpectedError(err))
+		if err.Error() == storage.MetricNotFound || err.Error() == storage.MetricUncorrect {
+			s.serverResponceBadRequest(w, err)
+			return
+		}
+		s.serverResponceInternalServerError(w, err)
+		return
 	}
 	if s.syncSaveEnabled {
 		serr := s.storage.SaveData()
 		if serr != nil {
-			http.Error(w, "Unexpected error with file.", http.StatusInternalServerError)
+			s.serverResponceInternalServerError(w, serr)
 			return
 		}
 		s.log.Info(
@@ -204,19 +203,23 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	metr, err := getMetricFromJSON(r, true)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.serverResponceBadRequest(w, err)
 		return
 	}
 
 	m, err := s.storage.CreateOrUpdate(metr)
 	if err != nil {
-		s.reportServerError(w, err, storage.IsExpectedError(err))
+		if err.Error() == storage.MetricNotFound || err.Error() == storage.MetricUncorrect {
+			s.serverResponceBadRequest(w, err)
+			return
+		}
+		s.serverResponceInternalServerError(w, err)
 		return
 	}
 	if s.syncSaveEnabled {
 		serr := s.storage.SaveData()
 		if serr != nil {
-			http.Error(w, "Unexpected error with file.", http.StatusInternalServerError)
+			s.serverResponceInternalServerError(w, serr)
 			return
 		}
 		s.log.Info(
@@ -226,6 +229,34 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.serverResponceWithJSON(w, m)
+}
+
+func getMetricFromRequest(r *http.Request, validateValue bool) (entity.Metrics, error) {
+	metr := entity.Metrics{
+		ID:    r.PathValue("name"),
+		MType: r.PathValue("type"),
+	}
+	if metr.MType != entity.Gauge && metr.MType != entity.Counter {
+		return metr, errors.New("incorrect metric type")
+	}
+	if validateValue {
+		val := r.PathValue("value")
+		if metr.MType == entity.Gauge {
+			num, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return metr, errors.New("incorrect metric value for float")
+			}
+			metr.Value = &num
+		}
+		if metr.MType == entity.Counter {
+			num, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return metr, errors.New("invalid metric value for int")
+			}
+			metr.Delta = &num
+		}
+	}
+	return metr, nil
 }
 
 func getMetricFromJSON(r *http.Request, validateValue bool) (entity.Metrics, error) {
@@ -240,8 +271,12 @@ func getMetricFromJSON(r *http.Request, validateValue bool) (entity.Metrics, err
 		return entity.Metrics{}, errors.New(err.Error())
 	}
 
+	if metr.MType != entity.Gauge && metr.MType != entity.Counter {
+		return metr, errors.New("incorrect metric type")
+	}
+
 	if validateValue && metr.Delta == nil && metr.Value == nil {
-		return entity.Metrics{}, errors.New("invalid value or delta")
+		return entity.Metrics{}, errors.New("invalid metric value or delta")
 	}
 
 	return metr, nil
@@ -249,11 +284,13 @@ func getMetricFromJSON(r *http.Request, validateValue bool) (entity.Metrics, err
 
 func (s *Server) validateRequestMethod(w http.ResponseWriter, current string, needed string) bool {
 	if current != needed {
-		s.log.Info(
-			"Invalid request method",
+		s.log.Error(
+			"Invalid request",
+			errors.New("invalid request method"),
 			"actual", current,
 			"expected", needed,
 		)
+
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return false
 	}
@@ -263,35 +300,30 @@ func (s *Server) validateRequestMethod(w http.ResponseWriter, current string, ne
 func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
 	res, err := json.Marshal(v)
 	if err != nil {
-		s.serverResponceError(w, err, http.StatusInternalServerError)
+		s.serverResponceInternalServerError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
 	if err != nil {
-		s.serverResponceError(w, err, http.StatusInternalServerError)
+		s.serverResponceInternalServerError(w, err)
 		return
 	}
 }
 
-func (s *Server) serverResponceError(w http.ResponseWriter, err error, status int) {
-	s.log.Info(
-		"Server error",
-		"error", err.Error(),
-	)
-	http.Error(w, "Error: "+err.Error(), status)
+func (s *Server) serverResponceBadRequest(w http.ResponseWriter, err error) {
+	s.log.Error("Bad request error (code 400)", err)
+	http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 }
 
-func (s *Server) reportServerError(w http.ResponseWriter, e error, isExpected bool) {
-	if isExpected {
-		s.serverResponceError(w, e, http.StatusBadRequest)
-	} else {
-		s.log.Info(
-			"Unexpected server error",
-			"error", e.Error(),
-		)
-		http.Error(w, "Unexpected error.", http.StatusInternalServerError)
-	}
+func (s *Server) serverResponceNotFound(w http.ResponseWriter, err error) {
+	s.log.Error("Bad request error (code 404)", err)
+	http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
+}
+
+func (s *Server) serverResponceInternalServerError(w http.ResponseWriter, err error) {
+	s.log.Error("Internal server error (code 500)", err)
+	http.Error(w, "Error: "+err.Error(), http.StatusInternalServerError)
 }
 
 func (s *Server) saveDataWithInterval(interval int64) {
