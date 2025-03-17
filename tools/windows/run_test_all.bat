@@ -1,3 +1,4 @@
-go run main.go -a=localhost:8080
+cd ..\..\
+go test -v ./...
 
 pause

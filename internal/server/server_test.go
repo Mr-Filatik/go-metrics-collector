@@ -72,7 +72,7 @@ func TestGetMetric(t *testing.T) {
 			path:           "/value/abracadabra/testAbracadabra",
 			parameters:     map[string]string{"type": "abracadabra", "name": "testAbracadabra"},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Error: invalid metric type\n",
+			expectedBody:   "Error: incorrect metric type\n",
 		},
 		{
 			name:           "Invalid metric name for gauge type",
@@ -147,7 +147,7 @@ func TestUpdateMetric(t *testing.T) {
 			path:           "/update/abracadabra/testAbracadabra/10",
 			parameters:     map[string]string{"type": "abracadabra", "name": "testAbracadabra", "value": "10"},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Error: invalid metric type\n",
+			expectedBody:   "Error: incorrect metric type\n",
 		},
 	}
 
