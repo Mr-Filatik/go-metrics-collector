@@ -1,29 +1,55 @@
 package logger
 
-import "go.uber.org/zap"
+import (
+	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"go.uber.org/zap"
+)
+
+type LogLevel = logger.LogLevel
+
+const (
+	LevelDebug = logger.LevelDebug
+	LevelInfo  = logger.LevelInfo
+)
 
 type ZapSugarLogger struct {
-	logger *zap.SugaredLogger
+	logger      *zap.SugaredLogger
+	minLogLevel LogLevel
 }
 
-func New() *ZapSugarLogger {
+func New(minLogLevel LogLevel) *ZapSugarLogger {
 	log, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}
 	zslog := &ZapSugarLogger{
-		logger: log.Sugar(),
+		minLogLevel: minLogLevel,
+		logger:      log.Sugar(),
 	}
 	zslog.Info(
 		"Create logger",
 		"name", "ZapSugarLogger",
-		"level", "info",
+		"level", zslog.minLogLevel,
 	)
 	return zslog
 }
 
+func (l *ZapSugarLogger) Log(level LogLevel, message string, keysAndValues ...interface{}) {
+	if level >= l.minLogLevel {
+		l.logger.Infow(message, keysAndValues...)
+	}
+}
+
+func (l *ZapSugarLogger) Debug(message string, keysAndValues ...interface{}) {
+	if LevelDebug >= l.minLogLevel {
+		l.logger.Infow(message, keysAndValues...)
+	}
+}
+
 func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
-	l.logger.Infow(message, keysAndValues...)
+	if LevelInfo >= l.minLogLevel {
+		l.logger.Infow(message, keysAndValues...)
+	}
 }
 
 func (l *ZapSugarLogger) Close() {
