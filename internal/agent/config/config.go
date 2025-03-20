@@ -25,36 +25,47 @@ func Initialize() *Config {
 		ReportInterval: defaultReportInterval,
 	}
 
+	config.getFlags()
+	config.getEnvironments()
+
+	return &config
+}
+
+func (c *Config) getFlags() {
 	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
 	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
 	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
+
 	flag.Parse()
+
 	if argEndpValue != nil && *argEndpValue != "" {
-		config.ServerAddress = "http://" + *argEndpValue
+		c.ServerAddress = "http://" + *argEndpValue
 	}
 	if argRepValue != nil && *argRepValue != 0 {
-		config.ReportInterval = *argRepValue
+		c.ReportInterval = *argRepValue
 	}
 	if argPollValue != nil && *argPollValue != 0 {
-		config.PollInterval = *argPollValue
+		c.PollInterval = *argPollValue
 	}
+}
 
+func (c *Config) getEnvironments() {
 	envEndpValue, ok := os.LookupEnv("ADDRESS")
 	if ok && envEndpValue != "" {
-		config.ServerAddress = "http://" + envEndpValue
+		c.ServerAddress = "http://" + envEndpValue
 	}
+
 	envRepValue, ok := os.LookupEnv("REPORT_INTERVAL")
 	if ok && envRepValue != "" {
 		if val, err := strconv.ParseInt(envRepValue, 10, 64); err == nil {
-			config.ReportInterval = val
-		}
-	}
-	envPollValue, ok := os.LookupEnv("POLL_INTERVAL")
-	if ok && envPollValue != "" {
-		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
-			config.PollInterval = val
+			c.ReportInterval = val
 		}
 	}
 
-	return &config
+	envPollValue, ok := os.LookupEnv("POLL_INTERVAL")
+	if ok && envPollValue != "" {
+		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
+			c.PollInterval = val
+		}
+	}
 }

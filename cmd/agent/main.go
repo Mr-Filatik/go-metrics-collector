@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Mr-Filatik/go-metrics-collector/cmd/agent/config"
+	config "github.com/Mr-Filatik/go-metrics-collector/internal/agent/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
