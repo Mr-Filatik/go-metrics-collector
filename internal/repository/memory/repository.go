@@ -12,8 +12,8 @@ import (
 
 type MemoryRepository struct {
 	log    logger.Logger
-	datas  []entity.Metrics
 	dbConn string
+	datas  []entity.Metrics
 }
 
 func New(dbConn string, l logger.Logger) *MemoryRepository {
