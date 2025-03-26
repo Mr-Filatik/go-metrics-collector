@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
+	repository "github.com/Mr-Filatik/go-metrics-collector/internal/repository/memory"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,10 +36,11 @@ func TestGetAllMetrics(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New(log)
-	stor := storage.New(repo, log, "")
+	repo := repository.New("", log)
+	// stor := storage.New("", log)
+	stor := service.New(repo, nil, 0, log)
 	serv := &Server{
-		storage: stor,
+		service: stor,
 		log:     log,
 	}
 
@@ -93,10 +94,11 @@ func TestGetMetric(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New(log)
-	stor := storage.New(repo, log, "")
+	repo := repository.New("", log)
+	// stor := storage.New("", log)
+	stor := service.New(repo, nil, 0, log)
 	serv := &Server{
-		storage: stor,
+		service: stor,
 		log:     log,
 	}
 
@@ -152,10 +154,11 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	log := logger.New(logger.LevelInfo)
-	repo := repository.New(log)
-	stor := storage.New(repo, log, "")
+	repo := repository.New("", log)
+	// stor := storage.New("", log)
+	stor := service.New(repo, nil, 0, log)
 	serv := &Server{
-		storage: stor,
+		service: stor,
 		log:     log,
 	}
 
