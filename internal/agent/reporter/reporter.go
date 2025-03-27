@@ -75,69 +75,54 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 			return nil
 		})
 
+		var metrics []entity.Metrics
 		for _, el := range m.GetAllGauge() {
 			if num, err := strconv.ParseFloat(el.Value, 64); err == nil {
-				metr := entity.Metrics{
+				mc := entity.Metrics{
 					ID:    el.Name,
 					MType: el.Type,
 					Value: &num,
 				}
-
-				dat, rerr := json.Marshal(metr)
-				if rerr != nil {
-					log.Printf("Error on json create: %v.", rerr.Error())
-					continue
-				}
-
-				address := endpoint + "/update/"
-				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, *metr.Value, metr.Delta)
-				resp, err := client.R().
-					SetHeader("Content-Type", "application/json").
-					SetHeader(ContentEncodingHeader, EncodingType).
-					SetHeader(AcceptEncodingHeader, EncodingType).
-					SetBody(dat).
-					Post(address)
-
-				if err != nil {
-					log.Printf("Error on response: %v.", err.Error())
-					continue
-				}
-				log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
+				metrics = append(metrics, mc)
 			}
 		}
-
 		for _, el := range m.GetAllCounter() {
 			met := m.GetCounter(el)
 			if num, err := strconv.ParseInt(met.Value, 10, 64); err == nil {
-				metr := entity.Metrics{
+				mc := entity.Metrics{
 					ID:    met.Name,
 					MType: met.Type,
 					Delta: &num,
 				}
-
-				dat, rerr := json.Marshal(metr)
-				if rerr != nil {
-					log.Printf("Error on json create: %v.", rerr.Error())
-					continue
-				}
-
-				address := endpoint + "/update/"
-				log.Printf("Response to %v. (%v, %v, %v, %v)", address, metr.ID, metr.MType, metr.Value, *metr.Delta)
-				resp, rerr := client.R().
-					SetHeader("Content-Type", "application/json").
-					SetHeader(ContentEncodingHeader, EncodingType).
-					SetHeader(AcceptEncodingHeader, EncodingType).
-					SetBody(dat).
-					Post(address)
-
-				if rerr != nil {
-					log.Printf("Error on response: %v.", rerr.Error())
-					continue
-				}
-				m.ClearCounter(el)
-				log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
+				metrics = append(metrics, mc)
 			}
 		}
+
+		dat, rerr := json.Marshal(metrics)
+		if rerr != nil {
+			log.Printf("Error on json create: %v.", rerr.Error())
+			continue
+		}
+
+		address := endpoint + "/updates/"
+		log.Printf("Response to %v. (Count: %d)", address, len(metrics))
+		resp, rerr := client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader(ContentEncodingHeader, EncodingType).
+			SetHeader(AcceptEncodingHeader, EncodingType).
+			SetBody(dat).
+			Post(address)
+
+		if rerr != nil {
+			log.Printf("Error on response: %v.", rerr.Error())
+			continue
+		}
+
+		for _, el := range m.GetAllCounter() {
+			m.ClearCounter(el)
+		}
+
+		log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
 	}
 }
 

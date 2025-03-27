@@ -37,7 +37,7 @@ func NewServer(s *service.Service, l logger.Logger) *Server {
 func (s *Server) routes() {
 	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
 	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/updates", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
+	s.router.Handle("/updates/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
 	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
 	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
 	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
