@@ -1,11 +1,13 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
+	"github.com/jackc/pgx/v5"
 )
 
 type MemoryRepository struct {
@@ -25,6 +27,29 @@ func New(dbConn string, l logger.Logger) *MemoryRepository {
 }
 
 func (r *MemoryRepository) Ping() error {
+	conn, err := pgx.Connect(context.Background(), r.dbConn)
+	if err != nil {
+		r.log.Error("Error when connecting to the database", err)
+		return errors.New("connect error")
+	}
+	// defer conn.Close(context.Background())
+	defer func() {
+		if err := conn.Close(context.Background()); err != nil {
+			r.log.Error("Error when close connecting to the database", err)
+		}
+	}()
+
+	var version string
+	err = conn.QueryRow(context.Background(), "SELECT version();").Scan(&version)
+	if err != nil {
+		r.log.Error("Error during query execution", err)
+		return errors.New("query error")
+	}
+
+	r.log.Info(
+		"Successful connection",
+		"version", version,
+	)
 	return nil
 }
 
