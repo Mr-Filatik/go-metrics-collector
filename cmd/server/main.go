@@ -25,7 +25,7 @@ func main() {
 		// defer repo.Close()
 		defer func() {
 			if err := repo.Close(); err != nil {
-				log.Error("Error in repository close")
+				log.Error("Error in repository close", err)
 			}
 		}()
 		srvc = service.New(repo, nil, 0, log)
