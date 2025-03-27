@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -22,32 +23,41 @@ const (
 	AcceptEncodingHeader  = "Accept-Encoding"
 )
 
-func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
+func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, log logger.Logger) {
 	t := time.Tick(time.Duration(reportInterval) * time.Second)
 
 	for range t {
 		client := resty.New()
 
 		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
+			for name, values := range r.Header {
+				for _, value := range values {
+					log.Debug("Request header",
+						"name", name,
+						"value", value)
+				}
+			}
 			if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
 				body := r.Body
 				if body != nil {
 					byteBody, ok := body.([]byte)
 					if !ok {
-						log.Printf("Body does not exist")
+						log.Error("Compress body error", errors.New("body does not exist"))
 						return nil
 					}
 					compressedBody, err := compressBody(byteBody)
 					if err != nil {
-						log.Printf("Compress body error: %v", err.Error())
+						log.Error("Compress body error", err)
 						return nil
 					}
 					if compressedBody != nil {
-						log.Printf("Compress body: %v -> %v", len(byteBody), len(compressedBody))
+						log.Debug("Compress body",
+							"fromSize", len(byteBody),
+							"toSize", len(compressedBody))
 						r.SetBody(compressedBody)
 					}
 				} else {
-					log.Printf("Compress body error: body is empty")
+					log.Error("Compress body error", errors.New("body is empty"))
 				}
 			}
 			return nil
@@ -56,20 +66,24 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 		client.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
 			for name, values := range r.Header() {
 				for _, value := range values {
-					log.Printf("Response header: %v: %v", name, value)
+					log.Debug("Response header",
+						"name", name,
+						"value", value)
 				}
 			}
 			if strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
 				val, err := decompressBody(r.Body())
 				if err != nil {
 					if err.Error() == "gzip: invalid header" {
-						log.Printf("Decompress body error: body not compress")
+						log.Error("Decompress body error", errors.New("body not compress"))
 					} else {
-						log.Printf("Decompress body error: %v", err.Error())
+						log.Error("Decompress body error", err)
 					}
 					return nil
 				}
-				log.Printf("Decompress body: %v -> %v", len(r.Body()), len(val))
+				log.Debug("Decompress body",
+					"fromSize", len(r.Body()),
+					"toSize", len(val))
 				r.SetBody(val)
 			}
 			return nil
@@ -100,21 +114,31 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 
 		dat, rerr := json.Marshal(metrics)
 		if rerr != nil {
-			log.Printf("Error on json create: %v.", rerr.Error())
+			log.Error("Error on json create", rerr)
 			continue
 		}
 
 		address := endpoint + "/updates/"
-		log.Printf("Response to %v. (Count: %d)", address, len(metrics))
-		resp, rerr := client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader(ContentEncodingHeader, EncodingType).
-			SetHeader(AcceptEncodingHeader, EncodingType).
-			SetBody(dat).
-			Post(address)
+
+		resp, rerr := repeater.New[[]byte, *resty.Response](log).
+			SetFunc(func(b []byte) (*resty.Response, error) {
+				log.Info("Response to server",
+					"address", address,
+					"count", len(metrics))
+				resp, rerr := client.R().
+					SetHeader("Content-Type", "application/json").
+					SetHeader(ContentEncodingHeader, EncodingType).
+					SetHeader(AcceptEncodingHeader, EncodingType).
+					SetBody(dat).
+					Post(address)
+
+				return resp, errors.New(rerr.Error())
+			}).
+			// SetCondition(...).
+			Run(dat)
 
 		if rerr != nil {
-			log.Printf("Error on response: %v.", rerr.Error())
+			log.Error("Response error", rerr)
 			continue
 		}
 
@@ -122,7 +146,9 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64) {
 			m.ClearCounter(el)
 		}
 
-		log.Printf("Response is done. StatusCode: %v. Data: %v.", resp.Status(), string(resp.Body()))
+		log.Info("Response success",
+			"statusCode", resp.Status(),
+			"data", string(resp.Body()))
 	}
 }
 
