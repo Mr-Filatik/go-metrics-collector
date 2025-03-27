@@ -36,7 +36,7 @@ func New(r repository.Repository, s storage.Storage, strInterval int64, l logger
 }
 
 func (s *Service) Start(restoreData bool) {
-	if restoreData {
+	if s.storage != nil && restoreData {
 		data, serr := s.storage.LoadData()
 		if serr != nil {
 			s.log.Error("Load data from storage error", serr)
@@ -159,14 +159,16 @@ func (s *Service) autoSaveDataWithInterval(interval int64) {
 		if rerr != nil {
 			s.log.Error("Get data from repository error", rerr)
 		}
-		serr := s.storage.SaveData(data)
-		if serr != nil {
-			s.log.Error("Auto save data to storage error", serr)
+		if s.storage != nil {
+			serr := s.storage.SaveData(data)
+			if serr != nil {
+				s.log.Error("Auto save data to storage error", serr)
+			}
+			s.log.Info(
+				"Auto save data to storage is success",
+				"time", time.Now(),
+			)
 		}
-		s.log.Info(
-			"Auto save data to storage is success",
-			"time", time.Now(),
-		)
 	}
 }
 
@@ -176,15 +178,17 @@ func (s *Service) saveDataWithoutInterval() error {
 		s.log.Error("Save data to storage error", rerr)
 		return errors.New(UnexpectedMetricUpdate)
 	}
-	serr := s.storage.SaveData(data)
-	if serr != nil {
-		s.log.Error("Save data to storage error", serr)
-		return errors.New(UnexpectedMetricUpdate)
+	if s.storage != nil {
+		serr := s.storage.SaveData(data)
+		if serr != nil {
+			s.log.Error("Save data to storage error", serr)
+			return errors.New(UnexpectedMetricUpdate)
+		}
+		s.log.Info(
+			"Save data to storage is success",
+			"time", time.Now(),
+		)
 	}
-	s.log.Info(
-		"Save data to storage is success",
-		"time", time.Now(),
-	)
 	return nil
 }
 
