@@ -132,7 +132,10 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, log logg
 					SetBody(dat).
 					Post(address)
 
-				return resp, errors.New(rerr.Error())
+				if rerr != nil {
+					return resp, errors.New(rerr.Error())
+				}
+				return resp, nil
 			}).
 			// SetCondition(...).
 			Run(dat)
