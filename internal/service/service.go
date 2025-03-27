@@ -53,7 +53,7 @@ func (s *Service) Start(restoreData bool) {
 		)
 	}
 
-	if s.storSaveInterval != 0 {
+	if s.storage != nil && s.storSaveInterval != 0 {
 		go s.autoSaveDataWithInterval(s.storSaveInterval)
 	}
 }
@@ -117,7 +117,7 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
 
-			if s.storSaveInterval == 0 {
+			if s.storage != nil && s.storSaveInterval == 0 {
 				err := s.saveDataWithoutInterval()
 				if err != nil {
 					return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
@@ -136,7 +136,7 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
 
-			if s.storSaveInterval == 0 {
+			if s.storage != nil && s.storSaveInterval == 0 {
 				err := s.saveDataWithoutInterval()
 				if err != nil {
 					return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
