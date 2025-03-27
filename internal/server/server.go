@@ -37,6 +37,7 @@ func NewServer(s *service.Service, l logger.Logger) *Server {
 func (s *Server) routes() {
 	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
 	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/updates", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
 	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
 	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
 	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
@@ -85,6 +86,31 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.serverResponceWithJSON(w, mArr)
+}
+
+func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
+	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
+	if !ok {
+		return
+	}
+
+	metr, err := getMetricsFromJSON(r, true)
+	if err != nil {
+		s.serverResponceBadRequest(w, err)
+		return
+	}
+
+	for _, m := range metr {
+		_, err := s.service.CreateOrUpdate(m)
+		if err != nil {
+			if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
+				s.serverResponceBadRequest(w, err)
+				return
+			}
+			s.serverResponceInternalServerError(w, err)
+			return
+		}
+	}
 }
 
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
@@ -227,6 +253,31 @@ func getMetricFromRequest(r *http.Request, validateValue bool) (entity.Metrics, 
 			metr.Delta = &num
 		}
 	}
+	return metr, nil
+}
+
+func getMetricsFromJSON(r *http.Request, validateValue bool) ([]entity.Metrics, error) {
+	var metr []entity.Metrics
+	var buf bytes.Buffer
+
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		return make([]entity.Metrics, 0), errors.New(err.Error())
+	}
+
+	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
+		return make([]entity.Metrics, 0), errors.New(err.Error())
+	}
+
+	for _, m := range metr {
+		if m.MType != entity.Gauge && m.MType != entity.Counter {
+			return metr, errors.New("incorrect metric type")
+		}
+
+		if validateValue && m.Delta == nil && m.Value == nil {
+			return make([]entity.Metrics, 0), errors.New("invalid metric value or delta")
+		}
+	}
+
 	return metr, nil
 }
 
