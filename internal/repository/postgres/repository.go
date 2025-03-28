@@ -6,7 +6,14 @@ import (
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
 	"github.com/jackc/pgx/v5"
+)
+
+var (
+	ErrConnectionStart = errors.New("start connection error")
+	ErrQueryRun        = errors.New("query run error")
+	ErrScanData        = errors.New("scan data error")
 )
 
 type PostgresRepository struct {
@@ -16,25 +23,38 @@ type PostgresRepository struct {
 }
 
 func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
-	conn, err := pgx.Connect(context.Background(), dbConn)
+	conn, err := repeater.New[string, *pgx.Conn](l).
+		SetFunc(func(c string) (*pgx.Conn, error) {
+			conn, err := pgx.Connect(context.Background(), dbConn)
+			if err != nil {
+				l.Error("Error when connecting to the database", err)
+				return nil, ErrConnectionStart
+			}
+
+			// Create table
+			query := `
+    		CREATE TABLE IF NOT EXISTS metrics (
+        		id TEXT PRIMARY KEY,
+        		mtype TEXT NOT NULL,
+        		value DOUBLE PRECISION,
+        		delta BIGINT
+    		);
+    		`
+			_, eerr := conn.Exec(context.Background(), query)
+			if eerr != nil {
+				l.Error("Error during table creation", eerr)
+				return nil, ErrQueryRun
+			}
+			return conn, nil
+		}).
+		SetCondition(func(err error) bool {
+			return !errors.Is(err, ErrConnectionStart) // I didn't pack the bugs due to time constraints.
+		}).
+		Run(dbConn)
+
 	if err != nil {
 		l.Error("Error when connecting to the database", err)
-		return nil, errors.New("start connection error")
-	}
-
-	// create table
-	query := `
-    CREATE TABLE IF NOT EXISTS metrics (
-        id TEXT PRIMARY KEY,
-        mtype TEXT NOT NULL,
-        value DOUBLE PRECISION,
-        delta BIGINT
-    );
-    `
-	_, eerr := conn.Exec(context.Background(), query)
-	if eerr != nil {
-		l.Error("Error during table creation", eerr)
-		return nil, errors.New("start connection error")
+		return nil, ErrConnectionStart
 	}
 
 	l.Info("Create PostgresRepository")
@@ -51,7 +71,7 @@ func (r *PostgresRepository) Ping() error {
 	err := r.conn.QueryRow(context.Background(), "SELECT version();").Scan(&version)
 	if err != nil {
 		r.log.Error("Error during query execution", err)
-		return errors.New("query error")
+		return ErrQueryRun
 	}
 
 	r.log.Info(
@@ -66,7 +86,7 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 		"SELECT id, mtype, value, delta FROM metrics")
 	if err != nil {
 		r.log.Error("Error during query execution", err)
-		return nil, errors.New("query error")
+		return nil, ErrQueryRun
 	}
 	defer rows.Close()
 
@@ -76,7 +96,7 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 		err := rows.Scan(&m.ID, &m.MType, &m.Value, &m.Delta)
 		if err != nil {
 			r.log.Error("Error scanning row", err)
-			return nil, errors.New("scan error")
+			return nil, ErrScanData
 		}
 		metrics = append(metrics, m)
 	}
@@ -98,7 +118,7 @@ func (r *PostgresRepository) Get(id string) (entity.Metrics, error) {
 			return entity.Metrics{}, errors.New("metric not found")
 		}
 		r.log.Error("Error during query execution", err)
-		return entity.Metrics{}, errors.New("query error")
+		return entity.Metrics{}, ErrQueryRun
 	}
 
 	r.log.Debug(
