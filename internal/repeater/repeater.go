@@ -53,7 +53,7 @@ func (r *Repeater[Tin, Tout]) Run(data Tin) (Tout, error) {
 	}
 	for r.current = 0; r.current < len(r.delays); r.current++ {
 		time.Sleep(time.Duration(r.delays[r.current]) * time.Second)
-		r.log.Warning("Repeater retry", "attempt", r.current+1)
+		r.log.Info("Repeater retry", "attempt", r.current+1)
 		result, err = r.action(data)
 		if r.condition(err) {
 			return result, nil

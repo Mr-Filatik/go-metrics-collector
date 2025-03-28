@@ -8,10 +8,8 @@ import (
 type LogLevel = logger.LogLevel
 
 const (
-	LevelDebug   = logger.LevelDebug
-	LevelInfo    = logger.LevelInfo
-	LevelWarning = logger.LevelWarning
-	LevelError   = logger.LevelError
+	LevelDebug = logger.LevelDebug
+	LevelInfo  = logger.LevelInfo
 )
 
 type ZapSugarLogger struct {
@@ -36,6 +34,12 @@ func New(minLogLevel LogLevel) *ZapSugarLogger {
 	return zslog
 }
 
+func (l *ZapSugarLogger) Log(level LogLevel, message string, keysAndValues ...interface{}) {
+	if level >= l.minLogLevel {
+		l.logger.Infow(message, keysAndValues...)
+	}
+}
+
 func (l *ZapSugarLogger) Debug(message string, keysAndValues ...interface{}) {
 	if LevelDebug >= l.minLogLevel {
 		l.logger.Infow(message, keysAndValues...)
@@ -48,15 +52,9 @@ func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
 	}
 }
 
-func (l *ZapSugarLogger) Warning(message string, keysAndValues ...interface{}) {
-	if LevelInfo >= l.minLogLevel {
-		l.logger.Infow(message, keysAndValues...)
-	}
-}
-
 func (l *ZapSugarLogger) Error(message string, err error, keysAndValues ...interface{}) {
 	if LevelInfo >= l.minLogLevel {
-		addKeysAndValues := append([]interface{}{"error", err.Error()}, keysAndValues...)
+		addKeysAndValues := append([]interface{}{"reason", err.Error()}, keysAndValues...)
 		l.logger.Infow(message, addKeysAndValues...)
 	}
 }
