@@ -1,17 +1,18 @@
 package logger
 
-type LogLevel uint32
+type LogLevel uint8
 
 const (
-	LevelDebug LogLevel = 1
-	LevelInfo  LogLevel = 2
-	LevelError LogLevel = 3
+	LevelDebug LogLevel = iota
+	LevelInfo
+	LevelWarning
+	LevelError
 )
 
 type Logger interface {
-	Log(level LogLevel, message string, keysAndValues ...interface{})
 	Debug(message string, keysAndValues ...interface{})
 	Info(message string, keysAndValues ...interface{})
+	Warning(message string, keysAndValues ...interface{})
 	Error(message string, err error, keysAndValues ...interface{})
 	Close()
 }
@@ -22,6 +23,8 @@ func GetLevelName(logLevel LogLevel) string {
 		return "debug"
 	case LevelInfo:
 		return "info"
+	case LevelWarning:
+		return "warning"
 	case LevelError:
 		return "error"
 	default:
