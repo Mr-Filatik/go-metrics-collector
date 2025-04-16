@@ -7,25 +7,28 @@ import (
 )
 
 const (
-	defaultServerAddress   string = "localhost:8080"
-	defaultStoreInterval   int64  = 300
-	defaultFileStoragePath string = "../../temp_metrics.json"
-	defaultRestore         bool   = false
+	defaultServerAddress    string = "localhost:8080"
+	defaultStoreInterval    int64  = 300
+	defaultFileStoragePath  string = "../../temp_metrics.json"
+	defaultRestore          bool   = false
+	defaultConnectionString string = ""
 )
 
 type Config struct {
-	ServerAddress   string
-	FileStoragePath string
-	StoreInterval   int64
-	Restore         bool
+	ServerAddress    string
+	FileStoragePath  string
+	ConnectionString string
+	StoreInterval    int64
+	Restore          bool
 }
 
 func Initialize() *Config {
 	config := Config{
-		ServerAddress:   defaultServerAddress,
-		StoreInterval:   defaultStoreInterval,
-		FileStoragePath: defaultFileStoragePath,
-		Restore:         defaultRestore,
+		ServerAddress:    defaultServerAddress,
+		StoreInterval:    defaultStoreInterval,
+		FileStoragePath:  defaultFileStoragePath,
+		Restore:          defaultRestore,
+		ConnectionString: "",
 	}
 
 	config.getFlags()
@@ -39,6 +42,7 @@ func (c *Config) getFlags() {
 	argIntervalValue := flag.Int64("i", defaultStoreInterval, "Interval in seconds to save data")
 	argFileValue := flag.String("f", defaultFileStoragePath, "Path to file")
 	argRestoreValue := flag.Bool("r", defaultRestore, "Loading data when the application starts")
+	argConnStr := flag.String("d", defaultConnectionString, "Database connection string")
 
 	flag.Parse()
 
@@ -53,6 +57,9 @@ func (c *Config) getFlags() {
 	}
 	if argRestoreValue != nil {
 		c.Restore = *argRestoreValue
+	}
+	if argConnStr != nil && *argConnStr != "" {
+		c.ConnectionString = *argConnStr
 	}
 }
 
@@ -79,5 +86,10 @@ func (c *Config) getEnvironments() {
 		if val, err := strconv.ParseBool(envRestoreValue); err == nil {
 			c.Restore = val
 		}
+	}
+
+	envConnStrValue, ok := os.LookupEnv("DATABASE_DSN")
+	if ok && envConnStrValue != "" {
+		c.ConnectionString = envConnStrValue
 	}
 }

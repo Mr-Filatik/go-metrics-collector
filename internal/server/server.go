@@ -7,28 +7,26 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
 type Server struct {
-	router          *chi.Mux
-	storage         *storage.Storage
-	conveyor        *middleware.Conveyor
-	log             logger.Logger
-	syncSaveEnabled bool
+	router   *chi.Mux
+	service  *service.Service
+	conveyor *middleware.Conveyor
+	log      logger.Logger
 }
 
-func NewServer(s *storage.Storage, l logger.Logger) *Server {
+func NewServer(s *service.Service, l logger.Logger) *Server {
 	srv := Server{
 		router:   chi.NewRouter(),
-		storage:  s,
+		service:  s,
 		conveyor: middleware.New(l),
 		log:      l,
 	}
@@ -37,7 +35,9 @@ func NewServer(s *storage.Storage, l logger.Logger) *Server {
 }
 
 func (s *Server) routes() {
+	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
 	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/updates/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
 	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
 	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
 	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
@@ -45,20 +45,7 @@ func (s *Server) routes() {
 }
 
 func (s *Server) Start(conf config.Config) {
-	s.syncSaveEnabled = conf.StoreInterval == 0
-
-	if conf.Restore {
-		err := s.storage.LoadData()
-		if err != nil {
-			s.log.Error("The data from the file was not loaded", err)
-		} else {
-			s.log.Info("The data from the file has been loaded")
-		}
-	}
-
-	if !s.syncSaveEnabled {
-		go s.saveDataWithInterval(conf.StoreInterval)
-	}
+	s.service.Start(conf.Restore)
 
 	s.log.Info(
 		"Start server",
@@ -72,11 +59,18 @@ func (s *Server) Start(conf config.Config) {
 		log.Fatal(err)
 	}
 
-	serr := s.storage.SaveData()
-	if serr != nil {
-		s.log.Error("No data was saved after the server was stopped", err)
-	} else {
-		s.log.Info("After the server was stopped, the data was saved")
+	s.service.Stop()
+}
+
+func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
+	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
+	if !ok {
+		return
+	}
+
+	err := s.service.Ping()
+	if err != nil {
+		s.serverResponceInternalServerError(w, err)
 	}
 }
 
@@ -86,12 +80,37 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mArr, err := s.storage.GetAll()
+	mArr, err := s.service.GetAll()
 	if err != nil {
 		s.serverResponceInternalServerError(w, err)
 		return
 	}
 	s.serverResponceWithJSON(w, mArr)
+}
+
+func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
+	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
+	if !ok {
+		return
+	}
+
+	metr, err := getMetricsFromJSON(r, true)
+	if err != nil {
+		s.serverResponceBadRequest(w, err)
+		return
+	}
+
+	for _, m := range metr {
+		_, err := s.service.CreateOrUpdate(m)
+		if err != nil {
+			if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
+				s.serverResponceBadRequest(w, err)
+				return
+			}
+			s.serverResponceInternalServerError(w, err)
+			return
+		}
+	}
 }
 
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
@@ -106,13 +125,13 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.storage.Get(metr.ID, metr.MType)
+	m, err := s.service.Get(metr.ID, metr.MType)
 	if err != nil {
-		if err.Error() == storage.MetricNotFound {
+		if err.Error() == service.MetricNotFound {
 			s.serverResponceNotFound(w, err)
 			return
 		}
-		if err.Error() == storage.MetricUncorrect {
+		if err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)
 			return
 		}
@@ -144,13 +163,13 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.storage.Get(metr.ID, metr.MType)
+	m, err := s.service.Get(metr.ID, metr.MType)
 	if err != nil {
-		if err.Error() == storage.MetricNotFound {
+		if err.Error() == service.MetricNotFound {
 			s.serverResponceNotFound(w, err)
 			return
 		}
-		if err.Error() == storage.MetricUncorrect {
+		if err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)
 			return
 		}
@@ -173,25 +192,14 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := s.storage.CreateOrUpdate(metr)
+	_, err := s.service.CreateOrUpdate(metr)
 	if err != nil {
-		if err.Error() == storage.MetricNotFound || err.Error() == storage.MetricUncorrect {
+		if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)
 			return
 		}
 		s.serverResponceInternalServerError(w, err)
 		return
-	}
-	if s.syncSaveEnabled {
-		serr := s.storage.SaveData()
-		if serr != nil {
-			s.serverResponceInternalServerError(w, serr)
-			return
-		}
-		s.log.Info(
-			"Save in file is DONE",
-			"time", time.Now(),
-		)
 	}
 }
 
@@ -207,25 +215,14 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.storage.CreateOrUpdate(metr)
+	m, err := s.service.CreateOrUpdate(metr)
 	if err != nil {
-		if err.Error() == storage.MetricNotFound || err.Error() == storage.MetricUncorrect {
+		if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)
 			return
 		}
 		s.serverResponceInternalServerError(w, err)
 		return
-	}
-	if s.syncSaveEnabled {
-		serr := s.storage.SaveData()
-		if serr != nil {
-			s.serverResponceInternalServerError(w, serr)
-			return
-		}
-		s.log.Info(
-			"Save in file is DONE",
-			"time", time.Now(),
-		)
 	}
 
 	s.serverResponceWithJSON(w, m)
@@ -256,6 +253,31 @@ func getMetricFromRequest(r *http.Request, validateValue bool) (entity.Metrics, 
 			metr.Delta = &num
 		}
 	}
+	return metr, nil
+}
+
+func getMetricsFromJSON(r *http.Request, validateValue bool) ([]entity.Metrics, error) {
+	var metr []entity.Metrics
+	var buf bytes.Buffer
+
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		return make([]entity.Metrics, 0), errors.New(err.Error())
+	}
+
+	if err := json.Unmarshal(buf.Bytes(), &metr); err != nil {
+		return make([]entity.Metrics, 0), errors.New(err.Error())
+	}
+
+	for _, m := range metr {
+		if m.MType != entity.Gauge && m.MType != entity.Counter {
+			return metr, errors.New("incorrect metric type")
+		}
+
+		if validateValue && m.Delta == nil && m.Value == nil {
+			return make([]entity.Metrics, 0), errors.New("invalid metric value or delta")
+		}
+	}
+
 	return metr, nil
 }
 
@@ -324,21 +346,4 @@ func (s *Server) serverResponceNotFound(w http.ResponseWriter, err error) {
 func (s *Server) serverResponceInternalServerError(w http.ResponseWriter, err error) {
 	s.log.Error("Internal server error (code 500)", err)
 	http.Error(w, "Error: "+err.Error(), http.StatusInternalServerError)
-}
-
-func (s *Server) saveDataWithInterval(interval int64) {
-	t := time.Tick(time.Duration(interval) * time.Second)
-
-	for range t {
-		serr := s.storage.SaveData()
-		if serr != nil {
-			s.log.Info(
-				"Save in file ERROR",
-			)
-		}
-		s.log.Info(
-			"Save in file is DONE",
-			"time", time.Now(),
-		)
-	}
 }

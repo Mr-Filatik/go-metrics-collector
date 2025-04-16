@@ -1,32 +1,34 @@
 package repository
 
 import (
-	"encoding/json"
 	"errors"
-	"os"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 )
 
-type MemRepository struct {
-	log   logger.Logger
-	datas []entity.Metrics
+type MemoryRepository struct {
+	log    logger.Logger
+	dbConn string
+	datas  []entity.Metrics
 }
 
-const (
-	ErrorMetricNotFound             = "metric not found"
-	filePermission      os.FileMode = 0o600
-)
+func New(dbConn string, l logger.Logger) *MemoryRepository {
+	l.Info("Create MemoryRepository")
 
-func New(l logger.Logger) *MemRepository {
-	return &MemRepository{
-		datas: make([]entity.Metrics, 0),
-		log:   l,
+	return &MemoryRepository{
+		datas:  make([]entity.Metrics, 0),
+		log:    l,
+		dbConn: dbConn,
 	}
 }
 
-func (r *MemRepository) GetAll() ([]entity.Metrics, error) {
+func (r *MemoryRepository) Ping() error {
+	return nil
+}
+
+func (r *MemoryRepository) GetAll() ([]entity.Metrics, error) {
 	if r.datas != nil {
 		r.log.Debug(
 			"Query all metrics from MemRepository",
@@ -38,7 +40,7 @@ func (r *MemRepository) GetAll() ([]entity.Metrics, error) {
 	return make([]entity.Metrics, 0), nil
 }
 
-func (r *MemRepository) Get(id string) (entity.Metrics, error) {
+func (r *MemoryRepository) Get(id string) (entity.Metrics, error) {
 	for _, v := range r.datas {
 		if v.ID == id {
 			r.log.Debug(
@@ -57,10 +59,10 @@ func (r *MemRepository) Get(id string) (entity.Metrics, error) {
 			}, nil
 		}
 	}
-	return entity.Metrics{}, errors.New(ErrorMetricNotFound)
+	return entity.Metrics{}, errors.New(repository.ErrorMetricNotFound)
 }
 
-func (r *MemRepository) Create(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Create(e entity.Metrics) (entity.Metrics, error) {
 	r.datas = append(r.datas, e)
 
 	r.log.Debug(
@@ -79,7 +81,7 @@ func (r *MemRepository) Create(e entity.Metrics) (entity.Metrics, error) {
 	}, nil
 }
 
-func (r *MemRepository) Update(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Update(e entity.Metrics) (entity.Metrics, error) {
 	for i, v := range r.datas {
 		if v.ID == e.ID {
 			item := &r.datas[i]
@@ -103,10 +105,10 @@ func (r *MemRepository) Update(e entity.Metrics) (entity.Metrics, error) {
 			}, nil
 		}
 	}
-	return entity.Metrics{}, errors.New(ErrorMetricNotFound)
+	return entity.Metrics{}, errors.New(repository.ErrorMetricNotFound)
 }
 
-func (r *MemRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
 	newDatas := make([]entity.Metrics, (len(r.datas) - 1))
 	index := 0
 	for i, v := range r.datas {
@@ -124,38 +126,4 @@ func (r *MemRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
 	}
 	r.datas = newDatas
 	return e, nil
-}
-
-func (r *MemRepository) LoadData(filePath string) error {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return errors.New("file does not exist")
-	}
-
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return errors.New("failed to read metrics from file")
-	}
-
-	var metrics []entity.Metrics
-	err = json.Unmarshal(data, &metrics)
-	if err != nil {
-		return errors.New("failed to deserialize metrics")
-	}
-
-	r.datas = metrics
-	return nil
-}
-
-func (r *MemRepository) SaveData(filePath string) error {
-	data, err := json.MarshalIndent(r.datas, "", "  ")
-	if err != nil {
-		return errors.New("failed to serialize metrics")
-	}
-
-	err = os.WriteFile(filePath, data, filePermission)
-	if err != nil {
-		return errors.New("failed to write metrics to file")
-	}
-
-	return nil
 }
