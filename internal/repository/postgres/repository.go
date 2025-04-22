@@ -94,8 +94,8 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 		if err != nil {
 			r.log.Error("Error scanning row", err)
 			errs = append(errs, ErrScanData)
+			metrics = append(metrics, m)
 		}
-		metrics = append(metrics, m)
 	}
 	if errs != nil {
 		return nil, errors.Join(errs...)
