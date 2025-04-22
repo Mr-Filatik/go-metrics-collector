@@ -164,7 +164,15 @@ func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 		"value", e.Value,
 		"delta", e.Delta,
 	)
-	return *e.Value, *e.Delta, nil
+	value := float64(0)
+	if e.Value != nil {
+		value = *e.Value
+	}
+	delta := int64(0)
+	if e.Delta != nil {
+		delta = *e.Delta
+	}
+	return value, delta, nil
 }
 
 func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
