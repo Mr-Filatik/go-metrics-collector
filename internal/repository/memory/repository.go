@@ -92,7 +92,15 @@ func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
 				"delta", item.Delta,
 			)
 
-			return *item.Value, *item.Delta, nil
+			value := float64(0)
+			if item.Value != nil {
+				value = *item.Value
+			}
+			delta := int64(0)
+			if item.Delta != nil {
+				delta = *item.Delta
+			}
+			return value, delta, nil
 		}
 	}
 	return 0, 0, errors.New(repository.ErrorMetricNotFound)
