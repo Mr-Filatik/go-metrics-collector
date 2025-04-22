@@ -10,7 +10,7 @@ type Repository interface {
 	Ping() error
 	GetAll() ([]entity.Metrics, error)
 	GetByID(id string) (entity.Metrics, error)
-	Create(e entity.Metrics) (entity.Metrics, error)
-	Update(e entity.Metrics) (entity.Metrics, error)
-	Remove(e entity.Metrics) (entity.Metrics, error)
+	Create(e entity.Metrics) (string, error)
+	Update(e entity.Metrics) (float64, int64, error)
+	Remove(e entity.Metrics) (string, error)
 }

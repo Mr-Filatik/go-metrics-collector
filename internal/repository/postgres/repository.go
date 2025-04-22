@@ -131,12 +131,12 @@ func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 	return m, nil
 }
 
-func (r *PostgresRepository) Create(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"INSERT INTO metrics (id, mtype, value, delta) VALUES ($1, $2, $3, $4)", e.ID, e.MType, e.Value, e.Delta)
 	if err != nil {
 		r.log.Error("Error during insert execution", err)
-		return entity.Metrics{}, errors.New("insert error")
+		return "", errors.New("insert error")
 	}
 
 	r.log.Debug(
@@ -146,15 +146,15 @@ func (r *PostgresRepository) Create(e entity.Metrics) (entity.Metrics, error) {
 		"value", e.Value,
 		"delta", e.Delta,
 	)
-	return e, nil
+	return e.ID, nil
 }
 
-func (r *PostgresRepository) Update(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"UPDATE metrics SET mtype = $1, value = $2, delta = $3 WHERE id = $4", e.MType, e.Value, e.Delta, e.ID)
 	if err != nil {
 		r.log.Error("Error during update execution", err)
-		return entity.Metrics{}, errors.New("update error")
+		return 0, 0, errors.New("update error")
 	}
 
 	r.log.Debug(
@@ -164,21 +164,21 @@ func (r *PostgresRepository) Update(e entity.Metrics) (entity.Metrics, error) {
 		"value", e.Value,
 		"delta", e.Delta,
 	)
-	return e, nil
+	return *e.Value, *e.Delta, nil
 }
 
-func (r *PostgresRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(), "DELETE FROM metrics WHERE id = $1", e.ID)
 	if err != nil {
 		r.log.Error("Error during delete execution", err)
-		return entity.Metrics{}, errors.New("delete error")
+		return "", errors.New("delete error")
 	}
 
 	r.log.Debug(
 		"Deleting a metric in PostgresRepository",
 		"id", e.ID,
 	)
-	return e, nil
+	return e.ID, nil
 }
 
 func (r *PostgresRepository) Close() error {
