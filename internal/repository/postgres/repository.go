@@ -90,15 +90,19 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	}
 	defer rows.Close()
 
+	var errs []error
 	var metrics []entity.Metrics
 	for rows.Next() {
 		var m entity.Metrics
 		err := rows.Scan(&m.ID, &m.MType, &m.Value, &m.Delta)
 		if err != nil {
 			r.log.Error("Error scanning row", err)
-			return nil, ErrScanData
+			errs = append(errs, ErrScanData)
 		}
 		metrics = append(metrics, m)
+	}
+	if errs != nil {
+		return nil, errors.Join(errs...)
 	}
 
 	r.log.Debug(
