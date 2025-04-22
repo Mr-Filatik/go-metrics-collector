@@ -108,7 +108,7 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	return metrics, nil
 }
 
-func (r *PostgresRepository) Get(id string) (entity.Metrics, error) {
+func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 	var m entity.Metrics
 	err := r.conn.QueryRow(context.Background(),
 		"SELECT id, mtype, value, delta FROM metrics WHERE id = $1", id).Scan(&m.ID, &m.MType, &m.Value, &m.Delta)

@@ -40,7 +40,7 @@ func (r *MemoryRepository) GetAll() ([]entity.Metrics, error) {
 	return make([]entity.Metrics, 0), nil
 }
 
-func (r *MemoryRepository) Get(id string) (entity.Metrics, error) {
+func (r *MemoryRepository) GetByID(id string) (entity.Metrics, error) {
 	for _, v := range r.datas {
 		if v.ID == id {
 			r.log.Debug(

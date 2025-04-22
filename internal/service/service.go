@@ -82,7 +82,7 @@ func (s *Service) GetAll() ([]entity.Metrics, error) {
 }
 
 func (s *Service) Get(id string, t string) (entity.Metrics, error) {
-	m, err := s.repository.Get(id)
+	m, err := s.repository.GetByID(id)
 	if err != nil {
 		s.reportStorageError(err.Error(), "")
 		return entity.Metrics{}, errors.New(err.Error())
@@ -96,7 +96,7 @@ func (s *Service) Get(id string, t string) (entity.Metrics, error) {
 }
 
 func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
-	m, err := s.repository.Get(e.ID)
+	m, err := s.repository.GetByID(e.ID)
 	if err != nil {
 		im, iErr := s.repository.Create(e)
 		if iErr != nil {
