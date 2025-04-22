@@ -67,17 +67,13 @@ func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
 }
 
 func (r *PostgresRepository) Ping() error {
-	var version string
-	err := r.conn.QueryRow(context.Background(), "SELECT version();").Scan(&version)
+	err := r.conn.Ping(context.Background())
 	if err != nil {
-		r.log.Error("Error during query execution", err)
+		r.log.Error("Error during ping", err)
 		return ErrQueryRun
 	}
 
-	r.log.Info(
-		"Successful connection",
-		"version", version,
-	)
+	r.log.Info("Successful ping")
 	return nil
 }
 
