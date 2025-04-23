@@ -22,12 +22,7 @@ func main() {
 		if err != nil {
 			panic(err.Error())
 		}
-		// defer repo.Close()
-		defer func() {
-			if err := repo.Close(); err != nil {
-				log.Error("Error in repository close", err)
-			}
-		}()
+		defer repo.Close()
 		srvc = service.New(repo, nil, 0, log)
 	} else {
 		repo := repositoryMemory.New(conf.ConnectionString, log)

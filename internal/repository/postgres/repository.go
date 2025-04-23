@@ -8,6 +8,7 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -18,16 +19,31 @@ var (
 
 type PostgresRepository struct {
 	log    logger.Logger
-	conn   *pgx.Conn
+	conn   *pgxpool.Pool
 	dbConn string
 }
 
 func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
-	conn, err := repeater.New[string, *pgx.Conn](l).
-		SetFunc(func(c string) (*pgx.Conn, error) {
-			conn, err := pgx.Connect(context.Background(), dbConn)
+	conn, err := repeater.New[string, *pgxpool.Pool](l).
+		SetFunc(func(c string) (*pgxpool.Pool, error) {
+			poolConfig, err := pgxpool.ParseConfig(dbConn)
 			if err != nil {
-				l.Error("Error when connecting to the database", err)
+				l.Error("Error parsing connection string", err)
+				return nil, ErrConnectionStart
+			}
+
+			poolConfig.MaxConns = 10
+			poolConfig.MinConns = 2
+
+			conn, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+			if err != nil {
+				l.Error("Error creating connection pool", err)
+				return nil, ErrConnectionStart
+			}
+
+			err = conn.Ping(context.Background())
+			if err != nil {
+				l.Error("Error during ping", err)
 				return nil, ErrConnectionStart
 			}
 
@@ -189,11 +205,6 @@ func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
 	return e.ID, nil
 }
 
-func (r *PostgresRepository) Close() error {
-	err := r.conn.Close(context.Background())
-	if err != nil {
-		r.log.Error("Error when closing the database connection", err)
-		return errors.New("close connection error")
-	}
-	return nil
+func (r *PostgresRepository) Close() {
+	r.conn.Close()
 }
