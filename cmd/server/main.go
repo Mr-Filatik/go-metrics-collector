@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	log := logger.New(logger.LevelInfo)
+	log := logger.New(logger.LevelDebug)
 	defer log.Close()
 
 	conf := config.Initialize()
@@ -35,6 +35,6 @@ func main() {
 		srvc = service.New(repo, stor, conf.StoreInterval, log)
 	}
 
-	serv := server.NewServer(srvc, log)
+	serv := server.NewServer(srvc, conf.HashKey, log)
 	serv.Start(*conf)
 }

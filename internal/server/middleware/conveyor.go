@@ -7,18 +7,23 @@ import (
 )
 
 type Conveyor struct {
-	log logger.Logger
+	log     logger.Logger
+	hashKey string
 }
 
-func New(l logger.Logger) *Conveyor {
+func New(hashKey string, l logger.Logger) *Conveyor {
 	return &Conveyor{
-		log: l,
+		log:     l,
+		hashKey: hashKey,
 	}
 }
 
 type Middleware func(http.Handler) http.Handler
 
 func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
+	if c.hashKey != "" {
+		return c.registerConveyor(h, c.WithHashValidation, c.WithCompressedGzip, c.WithLogging)
+	}
 	return c.registerConveyor(h, c.WithCompressedGzip, c.WithLogging)
 }
 

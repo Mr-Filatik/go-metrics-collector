@@ -10,6 +10,8 @@ import (
 
 func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.log.Debug("Compressed middleware")
+
 		valueContent := r.Header.Get("Content-Type")
 		isType := strings.Contains(valueContent, "application/json") || strings.Contains(valueContent, "text/html")
 		if isType && strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {

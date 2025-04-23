@@ -16,5 +16,5 @@ func main() {
 	metrics := metric.New()
 
 	go updater.Run(metrics, conf.PollInterval)
-	reporter.Run(metrics, conf.ServerAddress, conf.ReportInterval, log)
+	reporter.Run(metrics, conf.ServerAddress, conf.ReportInterval, conf.HashKey, log)
 }

@@ -8,12 +8,14 @@ import (
 
 const (
 	defaultServerAddress  string = "localhost:8080"
+	defaultHashKey        string = ""
 	defaultPollInterval   int64  = 2
 	defaultReportInterval int64  = 10
 )
 
 type Config struct {
 	ServerAddress  string
+	HashKey        string
 	PollInterval   int64
 	ReportInterval int64
 }
@@ -21,6 +23,7 @@ type Config struct {
 func Initialize() *Config {
 	config := Config{
 		ServerAddress:  "http://" + defaultServerAddress,
+		HashKey:        defaultHashKey,
 		PollInterval:   defaultPollInterval,
 		ReportInterval: defaultReportInterval,
 	}
@@ -33,6 +36,7 @@ func Initialize() *Config {
 
 func (c *Config) getFlags() {
 	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
+	argKeyValue := flag.String("k", defaultHashKey, "Hash key")
 	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
 	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
 
@@ -40,6 +44,9 @@ func (c *Config) getFlags() {
 
 	if argEndpValue != nil && *argEndpValue != "" {
 		c.ServerAddress = "http://" + *argEndpValue
+	}
+	if argKeyValue != nil && *argKeyValue != "" {
+		c.HashKey = *argKeyValue
 	}
 	if argRepValue != nil && *argRepValue != 0 {
 		c.ReportInterval = *argRepValue
@@ -53,6 +60,11 @@ func (c *Config) getEnvironments() {
 	envEndpValue, ok := os.LookupEnv("ADDRESS")
 	if ok && envEndpValue != "" {
 		c.ServerAddress = "http://" + envEndpValue
+	}
+
+	envKeyValue, ok := os.LookupEnv("KEY")
+	if ok && envKeyValue != "" {
+		c.HashKey = envKeyValue
 	}
 
 	envRepValue, ok := os.LookupEnv("REPORT_INTERVAL")

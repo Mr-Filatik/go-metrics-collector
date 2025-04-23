@@ -23,11 +23,11 @@ type Server struct {
 	log      logger.Logger
 }
 
-func NewServer(s *service.Service, l logger.Logger) *Server {
+func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
 	srv := Server{
 		router:   chi.NewRouter(),
 		service:  s,
-		conveyor: middleware.New(l),
+		conveyor: middleware.New(hashKey, l),
 		log:      l,
 	}
 	srv.routes()
