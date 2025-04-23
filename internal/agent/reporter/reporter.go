@@ -3,6 +3,7 @@ package reporter
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -42,8 +43,10 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey 
 						return nil
 					}
 
-					hash := sha256.Sum256(byteBody)
-					hashStr := hex.EncodeToString(hash[:])
+					h := hmac.New(sha256.New, []byte(hashKey))
+					h.Write(byteBody)
+					hashBytes := h.Sum(nil)
+					hashStr := hex.EncodeToString(hashBytes)
 
 					r.Header.Set(HashHeader, hashStr)
 					log.Debug("HashSHA256 added to request headers", "hash", hashStr)

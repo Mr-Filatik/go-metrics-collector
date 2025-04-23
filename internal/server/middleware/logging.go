@@ -10,8 +10,6 @@ import (
 
 func (c *Conveyor) WithLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.log.Debug("Logging middleware")
-
 		if r.Header.Get("X-Request-Id") == "" {
 			r.Header.Set("X-Request-Id", uuid.New().String())
 		}

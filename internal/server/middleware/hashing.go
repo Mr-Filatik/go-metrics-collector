@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -11,8 +12,6 @@ import (
 
 func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.log.Debug("Hashing middleware")
-
 		hashFromHeader := r.Header.Get("HashSHA256")
 		c.log.Debug("Hash from header", "hash", hashFromHeader)
 		if hashFromHeader != "" {
@@ -23,12 +22,14 @@ func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 			}
 			r.Body.Close()
 
-			calculatedHash := sha256.Sum256(body)
-			calculatedHashStr := hex.EncodeToString(calculatedHash[:])
+			h := hmac.New(sha256.New, []byte(c.hashKey))
+			h.Write(body)
+			calculatedHash := h.Sum(nil)
+			calculatedHashStr := hex.EncodeToString(calculatedHash)
 			c.log.Debug("Calculated hash", "hash", calculatedHashStr)
 
 			if !strings.EqualFold(calculatedHashStr, hashFromHeader) {
-				http.Error(w, "Hash mismatch", http.StatusForbidden)
+				http.Error(w, "Hash mismatch", http.StatusBadRequest)
 				return
 			}
 
