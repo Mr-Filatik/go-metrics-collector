@@ -36,5 +36,5 @@ func main() {
 	}
 
 	serv := server.NewServer(srvc, conf.HashKey, log)
-	serv.Start(*conf)
+	serv.Start(conf.ServerAddress, conf.Restore)
 }

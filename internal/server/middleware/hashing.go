@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -20,7 +21,11 @@ func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 				http.Error(w, "Failed to read request body", http.StatusInternalServerError)
 				return
 			}
-			r.Body.Close()
+			berr := r.Body.Close()
+			if berr != nil {
+				http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+				return
+			}
 
 			h := hmac.New(sha256.New, []byte(c.hashKey))
 			h.Write(body)
@@ -58,7 +63,11 @@ func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 			w.Header().Set("HashSHA256", responseHashStr)
 		}
 
-		io.Copy(w, wrappedWriter.body)
+		_, cerr := io.Copy(w, wrappedWriter.body)
+		if cerr != nil {
+			http.Error(w, "Failed to copy request body", http.StatusInternalServerError)
+			return
+		}
 	})
 }
 
@@ -68,5 +77,10 @@ type hashResponseWriter struct {
 }
 
 func (w *hashResponseWriter) Write(b []byte) (int, error) {
-	return w.body.Write(b)
+	// return w.body.Write(b)
+	num, err := w.body.Write(b)
+	if err != nil {
+		return num, errors.New(err.Error())
+	}
+	return num, nil
 }
