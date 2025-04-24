@@ -11,6 +11,7 @@ const (
 	defaultHashKey        string = ""
 	defaultPollInterval   int64  = 2
 	defaultReportInterval int64  = 10
+	defaultRateLimit      int64  = 1
 )
 
 type Config struct {
@@ -18,6 +19,7 @@ type Config struct {
 	HashKey        string
 	PollInterval   int64
 	ReportInterval int64
+	RateLimit      int64
 }
 
 func Initialize() *Config {
@@ -26,6 +28,7 @@ func Initialize() *Config {
 		HashKey:        defaultHashKey,
 		PollInterval:   defaultPollInterval,
 		ReportInterval: defaultReportInterval,
+		RateLimit:      defaultRateLimit,
 	}
 
 	config.getFlags()
@@ -39,6 +42,7 @@ func (c *Config) getFlags() {
 	argKeyValue := flag.String("k", defaultHashKey, "Hash key")
 	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
 	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
+	argLimitValue := flag.Int64("l", defaultPollInterval, "Rate limit")
 
 	flag.Parse()
 
@@ -53,6 +57,9 @@ func (c *Config) getFlags() {
 	}
 	if argPollValue != nil && *argPollValue != 0 {
 		c.PollInterval = *argPollValue
+	}
+	if argLimitValue != nil && *argLimitValue != 0 {
+		c.RateLimit = *argLimitValue
 	}
 }
 
@@ -78,6 +85,13 @@ func (c *Config) getEnvironments() {
 	if ok && envPollValue != "" {
 		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
 			c.PollInterval = val
+		}
+	}
+
+	envLimitValue, ok := os.LookupEnv("RATE_LIMIT")
+	if ok && envLimitValue != "" {
+		if val, err := strconv.ParseInt(envLimitValue, 10, 64); err == nil {
+			c.RateLimit = val
 		}
 	}
 }

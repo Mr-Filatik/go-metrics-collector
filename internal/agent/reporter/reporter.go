@@ -27,10 +27,23 @@ const (
 	HashHeader            = "HashSHA256"
 )
 
-func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, log logger.Logger) {
+func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
+	jobs := make(chan interface{}, lim)
+	defer close(jobs)
+
+	for w := int64(1); w <= lim; w++ {
+		go worker(m, endpoint, hashKey, log, jobs)
+	}
+
 	t := time.Tick(time.Duration(reportInterval) * time.Second)
 
 	for range t {
+		jobs <- "run report"
+	}
+}
+
+func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.Logger, jobs <-chan interface{}) {
+	for range jobs {
 		client := resty.New()
 
 		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {

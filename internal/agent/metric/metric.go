@@ -5,40 +5,46 @@ import (
 	"math/rand"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type AgentMetrics struct {
-	Alloc         float64
-	BuckHashSys   float64
-	Frees         float64
-	GCCPUFraction float64
-	GCSys         float64
-	HeapAlloc     float64
-	HeapIdle      float64
-	HeapInuse     float64
-	HeapObjects   float64
-	HeapReleased  float64
-	HeapSys       float64
-	LastGC        float64
-	Lookups       float64
-	MCacheInuse   float64
-	MCacheSys     float64
-	MSpanInuse    float64
-	MSpanSys      float64
-	Mallocs       float64
-	NextGC        float64
-	NumForcedGC   float64
-	NumGC         float64
-	OtherSys      float64
-	PauseTotalNs  float64
-	StackInuse    float64
-	StackSys      float64
-	Sys           float64
-	TotalAlloc    float64
-	PollCount     int64
-	RandomValue   float64
+	Alloc           float64
+	BuckHashSys     float64
+	Frees           float64
+	GCCPUFraction   float64
+	GCSys           float64
+	HeapAlloc       float64
+	HeapIdle        float64
+	HeapInuse       float64
+	HeapObjects     float64
+	HeapReleased    float64
+	HeapSys         float64
+	LastGC          float64
+	Lookups         float64
+	MCacheInuse     float64
+	MCacheSys       float64
+	MSpanInuse      float64
+	MSpanSys        float64
+	Mallocs         float64
+	NextGC          float64
+	NumForcedGC     float64
+	NumGC           float64
+	OtherSys        float64
+	PauseTotalNs    float64
+	StackInuse      float64
+	StackSys        float64
+	Sys             float64
+	TotalAlloc      float64
+	PollCount       int64
+	RandomValue     float64
+	TotalMemory     float64
+	FreeMemory      float64
+	CPUutilization1 float64
 }
 
 func New() *AgentMetrics {
@@ -82,6 +88,20 @@ func (metric *AgentMetrics) Update() {
 	log.Printf("Update metrics.")
 }
 
+func (metric *AgentMetrics) UpdateMemory() {
+	vals, err := mem.VirtualMemory()
+	if err != nil {
+		metric.TotalMemory = float64(vals.Total)
+		metric.FreeMemory = float64(vals.Free)
+	}
+	val, cerr := cpu.Percent(time.Second, true)
+	if cerr != nil && len(val) > 1 {
+		metric.CPUutilization1 = val[0]
+	}
+
+	log.Printf("Update memory metrics.")
+}
+
 func (metric *AgentMetrics) GetAllGauge() []Metric {
 	list := make([]Metric, 0)
 	list = append(list,
@@ -112,7 +132,10 @@ func (metric *AgentMetrics) GetAllGauge() []Metric {
 		addMetric(entity.Gauge, "StackSys", strconv.FormatFloat(metric.StackSys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "Sys", strconv.FormatFloat(metric.Sys, 'f', -1, 64)),
 		addMetric(entity.Gauge, "TotalAlloc", strconv.FormatFloat(metric.TotalAlloc, 'f', -1, 64)),
-		addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)))
+		addMetric(entity.Gauge, "RandomValue", strconv.FormatFloat(metric.RandomValue, 'f', -1, 64)),
+		addMetric(entity.Gauge, "TotalMemory", strconv.FormatFloat(metric.TotalMemory, 'f', -1, 64)),
+		addMetric(entity.Gauge, "FreeMemory", strconv.FormatFloat(metric.FreeMemory, 'f', -1, 64)),
+		addMetric(entity.Gauge, "CPUutilization1", strconv.FormatFloat(metric.CPUutilization1, 'f', -1, 64)))
 	log.Printf("Get all gauge metrics. Count: %v.", len(list))
 	return list
 }
@@ -174,6 +197,9 @@ func (metric *AgentMetrics) Log() {
 	log.Printf("- TotalAlloc: %v.", metric.TotalAlloc)
 	log.Printf("- PollCount: %v.", metric.PollCount)
 	log.Printf("- RandomValue: %v.", metric.RandomValue)
+	log.Printf("- TotalMemory: %v.", metric.TotalMemory)
+	log.Printf("- FreeMemory: %v.", metric.FreeMemory)
+	log.Printf("- CPUutilization1: %v.", metric.CPUutilization1)
 }
 
 type Metric struct {
