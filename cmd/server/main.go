@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	log := logger.New(logger.LevelInfo)
+	log := logger.New(logger.LevelDebug)
 	defer log.Close()
 
 	conf := config.Initialize()
@@ -22,12 +22,7 @@ func main() {
 		if err != nil {
 			panic(err.Error())
 		}
-		// defer repo.Close()
-		defer func() {
-			if err := repo.Close(); err != nil {
-				log.Error("Error in repository close", err)
-			}
-		}()
+		defer repo.Close()
 		srvc = service.New(repo, nil, 0, log)
 	} else {
 		repo := repositoryMemory.New(conf.ConnectionString, log)
@@ -35,6 +30,6 @@ func main() {
 		srvc = service.New(repo, stor, conf.StoreInterval, log)
 	}
 
-	serv := server.NewServer(srvc, log)
-	serv.Start(*conf)
+	serv := server.NewServer(srvc, conf.HashKey, log)
+	serv.Start(conf.ServerAddress, conf.Restore)
 }

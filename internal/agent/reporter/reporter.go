@@ -3,6 +3,9 @@ package reporter
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -21,22 +24,50 @@ const (
 	EncodingType          = "gzip"
 	ContentEncodingHeader = "Content-Encoding"
 	AcceptEncodingHeader  = "Accept-Encoding"
+	HashHeader            = "HashSHA256"
 )
 
-func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, log logger.Logger) {
+func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
+	jobs := make(chan interface{}, lim)
+	defer close(jobs)
+
+	for w := int64(1); w <= lim; w++ {
+		go worker(m, endpoint, hashKey, log, jobs)
+	}
+
 	t := time.Tick(time.Duration(reportInterval) * time.Second)
 
 	for range t {
+		jobs <- "run report"
+	}
+}
+
+func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.Logger, jobs <-chan interface{}) {
+	for range jobs {
 		client := resty.New()
 
 		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-			for name, values := range r.Header {
-				for _, value := range values {
-					log.Debug("Request header",
-						"name", name,
-						"value", value)
+			if hashKey != "" {
+				body := r.Body
+				if body != nil {
+					byteBody, ok := body.([]byte)
+					if !ok {
+						log.Error("Hashing body error", errors.New("body is not of type []byte"))
+						return nil
+					}
+
+					h := hmac.New(sha256.New, []byte(hashKey))
+					h.Write(byteBody)
+					hashBytes := h.Sum(nil)
+					hashStr := hex.EncodeToString(hashBytes)
+
+					r.Header.Set(HashHeader, hashStr)
+					log.Debug("HashSHA256 added to request headers", "hash", hashStr)
+				} else {
+					log.Error("Hashing body error", errors.New("body is empty"))
 				}
 			}
+
 			if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
 				body := r.Body
 				if body != nil {
@@ -58,6 +89,14 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, log logg
 					}
 				} else {
 					log.Error("Compress body error", errors.New("body is empty"))
+				}
+			}
+
+			for name, values := range r.Header {
+				for _, value := range values {
+					log.Debug("Request header",
+						"name", name,
+						"value", value)
 				}
 			}
 			return nil

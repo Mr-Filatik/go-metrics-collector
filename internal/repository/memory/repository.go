@@ -40,7 +40,7 @@ func (r *MemoryRepository) GetAll() ([]entity.Metrics, error) {
 	return make([]entity.Metrics, 0), nil
 }
 
-func (r *MemoryRepository) Get(id string) (entity.Metrics, error) {
+func (r *MemoryRepository) GetByID(id string) (entity.Metrics, error) {
 	for _, v := range r.datas {
 		if v.ID == id {
 			r.log.Debug(
@@ -62,7 +62,7 @@ func (r *MemoryRepository) Get(id string) (entity.Metrics, error) {
 	return entity.Metrics{}, errors.New(repository.ErrorMetricNotFound)
 }
 
-func (r *MemoryRepository) Create(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Create(e entity.Metrics) (string, error) {
 	r.datas = append(r.datas, e)
 
 	r.log.Debug(
@@ -73,15 +73,10 @@ func (r *MemoryRepository) Create(e entity.Metrics) (entity.Metrics, error) {
 		"delta", e.Delta,
 	)
 
-	return entity.Metrics{
-		ID:    e.ID,
-		MType: e.MType,
-		Value: e.Value,
-		Delta: e.Delta,
-	}, nil
+	return e.ID, nil
 }
 
-func (r *MemoryRepository) Update(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
 	for i, v := range r.datas {
 		if v.ID == e.ID {
 			item := &r.datas[i]
@@ -97,18 +92,21 @@ func (r *MemoryRepository) Update(e entity.Metrics) (entity.Metrics, error) {
 				"delta", item.Delta,
 			)
 
-			return entity.Metrics{
-				ID:    item.ID,
-				MType: item.MType,
-				Value: item.Value,
-				Delta: item.Delta,
-			}, nil
+			value := float64(0)
+			if item.Value != nil {
+				value = *item.Value
+			}
+			delta := int64(0)
+			if item.Delta != nil {
+				delta = *item.Delta
+			}
+			return value, delta, nil
 		}
 	}
-	return entity.Metrics{}, errors.New(repository.ErrorMetricNotFound)
+	return 0, 0, errors.New(repository.ErrorMetricNotFound)
 }
 
-func (r *MemoryRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
+func (r *MemoryRepository) Remove(e entity.Metrics) (string, error) {
 	newDatas := make([]entity.Metrics, (len(r.datas) - 1))
 	index := 0
 	for i, v := range r.datas {
@@ -125,5 +123,5 @@ func (r *MemoryRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
 		}
 	}
 	r.datas = newDatas
-	return e, nil
+	return e.ID, nil
 }

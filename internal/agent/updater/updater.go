@@ -13,3 +13,11 @@ func Run(m *metric.AgentMetrics, pollInterval int64) {
 		m.Update()
 	}
 }
+
+func RunMemory(m *metric.AgentMetrics, pollInterval int64) {
+	t := time.Tick(time.Duration(pollInterval) * time.Second)
+
+	for range t {
+		m.UpdateMemory()
+	}
+}

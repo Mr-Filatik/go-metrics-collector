@@ -10,7 +10,6 @@ import (
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
-	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -23,11 +22,11 @@ type Server struct {
 	log      logger.Logger
 }
 
-func NewServer(s *service.Service, l logger.Logger) *Server {
+func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
 	srv := Server{
 		router:   chi.NewRouter(),
 		service:  s,
-		conveyor: middleware.New(l),
+		conveyor: middleware.New(hashKey, l),
 		log:      l,
 	}
 	srv.routes()
@@ -44,17 +43,15 @@ func (s *Server) routes() {
 	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
 
-func (s *Server) Start(conf config.Config) {
-	s.service.Start(conf.Restore)
+func (s *Server) Start(serverAddress string, restore bool) {
+	s.service.Start(restore)
 
 	s.log.Info(
 		"Start server",
-		"endpoint", conf.ServerAddress,
-		"file path", conf.FileStoragePath,
-		"interval", conf.StoreInterval,
-		"restore data", conf.Restore,
+		"endpoint", serverAddress,
+		"restore data", restore,
 	)
-	err := http.ListenAndServe(conf.ServerAddress, s.router)
+	err := http.ListenAndServe(serverAddress, s.router)
 	if err != nil {
 		log.Fatal(err)
 	}

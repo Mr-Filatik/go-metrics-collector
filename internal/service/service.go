@@ -82,7 +82,7 @@ func (s *Service) GetAll() ([]entity.Metrics, error) {
 }
 
 func (s *Service) Get(id string, t string) (entity.Metrics, error) {
-	m, err := s.repository.Get(id)
+	m, err := s.repository.GetByID(id)
 	if err != nil {
 		s.reportStorageError(err.Error(), "")
 		return entity.Metrics{}, errors.New(err.Error())
@@ -96,22 +96,22 @@ func (s *Service) Get(id string, t string) (entity.Metrics, error) {
 }
 
 func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
-	m, err := s.repository.Get(e.ID)
+	m, err := s.repository.GetByID(e.ID)
 	if err != nil {
-		im, iErr := s.repository.Create(e)
+		_, iErr := s.repository.Create(e)
 		if iErr != nil {
 			s.reportStorageError(iErr.Error(), "")
 			return entity.Metrics{}, errors.New(UnexpectedMetricCreate)
 		}
-		s.reportMetricInfo("Storage create value", im)
-		return im, nil
+		s.reportMetricInfo("Storage create value", e)
+		return e, nil
 	} else {
 		if e.MType != m.MType {
 			s.reportStorageError(MetricUncorrect, e.MType)
 			return entity.Metrics{}, errors.New(MetricUncorrect)
 		}
 		if e.MType == entity.Gauge {
-			im, iErr := s.repository.Update(e)
+			ival, idel, iErr := s.repository.Update(e)
 			if iErr != nil {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
@@ -124,13 +124,15 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				}
 			}
 
-			s.reportMetricInfo("Storage update value", im)
-			return im, nil
+			e.Value = &ival
+			e.Delta = &idel
+			s.reportMetricInfo("Storage update value", e)
+			return e, nil
 		}
 		if e.MType == entity.Counter {
 			val := *m.Delta + *e.Delta
 			e.Delta = &val
-			im, iErr := s.repository.Update(e)
+			ival, idel, iErr := s.repository.Update(e)
 			if iErr != nil {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
@@ -143,8 +145,10 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 				}
 			}
 
-			s.reportMetricInfo("Storage update value", im)
-			return im, nil
+			e.Value = &ival
+			e.Delta = &idel
+			s.reportMetricInfo("Storage update value", e)
+			return e, nil
 		}
 		s.reportStorageError(MetricUncorrect, e.MType)
 		return entity.Metrics{}, errors.New(MetricUncorrect)

@@ -8,6 +8,7 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -18,16 +19,31 @@ var (
 
 type PostgresRepository struct {
 	log    logger.Logger
-	conn   *pgx.Conn
+	conn   *pgxpool.Pool
 	dbConn string
 }
 
 func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
-	conn, err := repeater.New[string, *pgx.Conn](l).
-		SetFunc(func(c string) (*pgx.Conn, error) {
-			conn, err := pgx.Connect(context.Background(), dbConn)
+	conn, err := repeater.New[string, *pgxpool.Pool](l).
+		SetFunc(func(c string) (*pgxpool.Pool, error) {
+			poolConfig, err := pgxpool.ParseConfig(dbConn)
 			if err != nil {
-				l.Error("Error when connecting to the database", err)
+				l.Error("Error parsing connection string", err)
+				return nil, ErrConnectionStart
+			}
+
+			poolConfig.MaxConns = 10
+			poolConfig.MinConns = 2
+
+			conn, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+			if err != nil {
+				l.Error("Error creating connection pool", err)
+				return nil, ErrConnectionStart
+			}
+
+			err = conn.Ping(context.Background())
+			if err != nil {
+				l.Error("Error during ping", err)
 				return nil, ErrConnectionStart
 			}
 
@@ -67,17 +83,13 @@ func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
 }
 
 func (r *PostgresRepository) Ping() error {
-	var version string
-	err := r.conn.QueryRow(context.Background(), "SELECT version();").Scan(&version)
+	err := r.conn.Ping(context.Background())
 	if err != nil {
-		r.log.Error("Error during query execution", err)
+		r.log.Error("Error during ping", err)
 		return ErrQueryRun
 	}
 
-	r.log.Info(
-		"Successful connection",
-		"version", version,
-	)
+	r.log.Info("Successful ping")
 	return nil
 }
 
@@ -90,15 +102,19 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	}
 	defer rows.Close()
 
+	var errs []error
 	var metrics []entity.Metrics
 	for rows.Next() {
 		var m entity.Metrics
 		err := rows.Scan(&m.ID, &m.MType, &m.Value, &m.Delta)
 		if err != nil {
 			r.log.Error("Error scanning row", err)
-			return nil, ErrScanData
+			errs = append(errs, ErrScanData)
+			metrics = append(metrics, m)
 		}
-		metrics = append(metrics, m)
+	}
+	if errs != nil {
+		return nil, errors.Join(errs...)
 	}
 
 	r.log.Debug(
@@ -108,7 +124,7 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	return metrics, nil
 }
 
-func (r *PostgresRepository) Get(id string) (entity.Metrics, error) {
+func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 	var m entity.Metrics
 	err := r.conn.QueryRow(context.Background(),
 		"SELECT id, mtype, value, delta FROM metrics WHERE id = $1", id).Scan(&m.ID, &m.MType, &m.Value, &m.Delta)
@@ -131,12 +147,12 @@ func (r *PostgresRepository) Get(id string) (entity.Metrics, error) {
 	return m, nil
 }
 
-func (r *PostgresRepository) Create(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"INSERT INTO metrics (id, mtype, value, delta) VALUES ($1, $2, $3, $4)", e.ID, e.MType, e.Value, e.Delta)
 	if err != nil {
 		r.log.Error("Error during insert execution", err)
-		return entity.Metrics{}, errors.New("insert error")
+		return "", errors.New("insert error")
 	}
 
 	r.log.Debug(
@@ -146,15 +162,15 @@ func (r *PostgresRepository) Create(e entity.Metrics) (entity.Metrics, error) {
 		"value", e.Value,
 		"delta", e.Delta,
 	)
-	return e, nil
+	return e.ID, nil
 }
 
-func (r *PostgresRepository) Update(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"UPDATE metrics SET mtype = $1, value = $2, delta = $3 WHERE id = $4", e.MType, e.Value, e.Delta, e.ID)
 	if err != nil {
 		r.log.Error("Error during update execution", err)
-		return entity.Metrics{}, errors.New("update error")
+		return 0, 0, errors.New("update error")
 	}
 
 	r.log.Debug(
@@ -164,28 +180,31 @@ func (r *PostgresRepository) Update(e entity.Metrics) (entity.Metrics, error) {
 		"value", e.Value,
 		"delta", e.Delta,
 	)
-	return e, nil
+	value := float64(0)
+	if e.Value != nil {
+		value = *e.Value
+	}
+	delta := int64(0)
+	if e.Delta != nil {
+		delta = *e.Delta
+	}
+	return value, delta, nil
 }
 
-func (r *PostgresRepository) Remove(e entity.Metrics) (entity.Metrics, error) {
+func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(), "DELETE FROM metrics WHERE id = $1", e.ID)
 	if err != nil {
 		r.log.Error("Error during delete execution", err)
-		return entity.Metrics{}, errors.New("delete error")
+		return "", errors.New("delete error")
 	}
 
 	r.log.Debug(
 		"Deleting a metric in PostgresRepository",
 		"id", e.ID,
 	)
-	return e, nil
+	return e.ID, nil
 }
 
-func (r *PostgresRepository) Close() error {
-	err := r.conn.Close(context.Background())
-	if err != nil {
-		r.log.Error("Error when closing the database connection", err)
-		return errors.New("close connection error")
-	}
-	return nil
+func (r *PostgresRepository) Close() {
+	r.conn.Close()
 }
