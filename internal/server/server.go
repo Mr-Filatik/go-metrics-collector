@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"strconv"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
@@ -34,6 +35,8 @@ func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
 }
 
 func (s *Server) routes() {
+	s.router.Mount("/debug", http.DefaultServeMux)
+
 	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
 	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
 	s.router.Handle("/updates/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
