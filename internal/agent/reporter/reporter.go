@@ -130,7 +130,6 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 	})
 
 	for range jobs {
-
 		var metrics []entity.Metrics
 		gMetrics := m.GetAllGaugeNames()
 		for i := range gMetrics {
