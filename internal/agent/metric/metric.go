@@ -18,8 +18,8 @@ var (
 )
 
 type AgentMetrics struct {
-	PollCount int64
 	Metrics   map[string]*Metric
+	PollCount int64
 }
 
 func New() *AgentMetrics {
@@ -145,22 +145,22 @@ func (metric *AgentMetrics) Update() {
 	m.Value = strconv.FormatUint(uint64(mems.NumGC), 10)
 
 	m = metric.Metrics["OtherSys"]
-	m.Value = strconv.FormatUint(uint64(mems.OtherSys), 10)
+	m.Value = strconv.FormatUint(mems.OtherSys, 10)
 
 	m = metric.Metrics["PauseTotalNs"]
-	m.Value = strconv.FormatUint(uint64(mems.PauseTotalNs), 10)
+	m.Value = strconv.FormatUint(mems.PauseTotalNs, 10)
 
 	m = metric.Metrics["StackInuse"]
-	m.Value = strconv.FormatUint(uint64(mems.StackInuse), 10)
+	m.Value = strconv.FormatUint(mems.StackInuse, 10)
 
 	m = metric.Metrics["MSpanSys"]
-	m.Value = strconv.FormatUint(uint64(mems.MSpanSys), 10)
+	m.Value = strconv.FormatUint(mems.MSpanSys, 10)
 
 	m = metric.Metrics["Sys"]
-	m.Value = strconv.FormatUint(uint64(mems.Sys), 10)
+	m.Value = strconv.FormatUint(mems.Sys, 10)
 
 	m = metric.Metrics["TotalAlloc"]
-	m.Value = strconv.FormatUint(uint64(mems.TotalAlloc), 10)
+	m.Value = strconv.FormatUint(mems.TotalAlloc, 10)
 
 	metric.PollCount++
 	m = metric.Metrics["PollCount"]
