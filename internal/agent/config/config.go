@@ -1,3 +1,5 @@
+// Пакет config предоставляет функционал загрузки конфигурации из флагов командной строки и переменных окружения.
+// Конфигурация включает такие параметры как: адрес сервера, интервал опроса, интервал отправки и т.п.
 package config
 
 import (
@@ -6,22 +8,29 @@ import (
 	"strconv"
 )
 
+// Костанты - значения по умолчанию
 const (
-	defaultServerAddress  string = "localhost:8080"
-	defaultHashKey        string = ""
-	defaultPollInterval   int64  = 2
-	defaultReportInterval int64  = 10
-	defaultRateLimit      int64  = 1
+	defaultServerAddress  string = "localhost:8080" // Адрес сервера
+	defaultHashKey        string = ""               // Ключ хэширования (отсутствует)
+	defaultPollInterval   int64  = 2                // Интервал опроса (в секундах)
+	defaultReportInterval int64  = 10               // Интервал отправки данных (в секундах)
+	defaultRateLimit      int64  = 1                // Лимит запросов для агента
 )
 
+// Config - структура, содержащая основные параметры приложения
 type Config struct {
-	ServerAddress  string
-	HashKey        string
-	PollInterval   int64
-	ReportInterval int64
-	RateLimit      int64
+	ServerAddress  string // Адрес сервера
+	HashKey        string // Ключ хэширования
+	PollInterval   int64  // Интервал опроса (в секундах)
+	ReportInterval int64  // Интервал отправки данных (в секундах)
+	RateLimit      int64  // Лимит запросов для агента
 }
 
+// Initialize создаёт и иницализирует объект *Config.
+// Значения присваиваются в следующем порядке (переприсваивают):
+// - значения по умолчания
+// - значения из флагов командной строки
+// - значения из переменных окружения
 func Initialize() *Config {
 	config := Config{
 		ServerAddress:  "http://" + defaultServerAddress,
