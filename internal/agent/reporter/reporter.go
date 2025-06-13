@@ -23,10 +23,10 @@ import (
 )
 
 const (
-	EncodingType          = "gzip"
-	ContentEncodingHeader = "Content-Encoding"
-	AcceptEncodingHeader  = "Accept-Encoding"
-	HashHeader            = "HashSHA256"
+	EncodingType          = "gzip"             // тип кодирования
+	ContentEncodingHeader = "Content-Encoding" // заголовок кодирования контента
+	AcceptEncodingHeader  = "Accept-Encoding"  // заголовок поддерживаемого кодирования
+	HashHeader            = "HashSHA256"       // заголовок хеширования содержимого
 )
 
 // Run запускает цикл отправки метрик на удалённый сервер.

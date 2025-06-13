@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-// Костанты - значения по умолчанию
+// Костанты - значения по умолчанию.
 const (
-	defaultServerAddress  string = "localhost:8080" // Адрес сервера
-	defaultHashKey        string = ""               // Ключ хэширования (отсутствует)
-	defaultPollInterval   int64  = 2                // Интервал опроса (в секундах)
-	defaultReportInterval int64  = 10               // Интервал отправки данных (в секундах)
-	defaultRateLimit      int64  = 1                // Лимит запросов для агента
+	defaultServerAddress  string = "localhost:8080" // адрес сервера
+	defaultHashKey        string = ""               // ключ хэширования (отсутствует)
+	defaultPollInterval   int64  = 2                // интервал опроса (в секундах)
+	defaultReportInterval int64  = 10               // интервал отправки данных (в секундах)
+	defaultRateLimit      int64  = 1                // лимит запросов для агента
 )
 
 // Config - структура, содержащая основные параметры приложения

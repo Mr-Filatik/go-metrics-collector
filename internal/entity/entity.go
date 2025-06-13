@@ -1,9 +1,10 @@
 // Пакет entity содержит общие сущности для проектов.
 package entity
 
+// Константы - типы метрик.
 const (
-	Gauge   string = "gauge"
-	Counter string = "counter"
+	Gauge   string = "gauge"   // метрика gauge с заменяемым значением
+	Counter string = "counter" // метрика counter с накопительным значением
 )
 
 type Metrics struct {

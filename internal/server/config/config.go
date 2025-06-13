@@ -8,14 +8,14 @@ import (
 	"strconv"
 )
 
-// Костанты - значения по умолчанию
+// Костанты - значения по умолчанию.
 const (
-	defaultServerAddress    string = "localhost:8080"          // Адрес сервера
-	defaultHashKey          string = ""                        // Ключ хэширования (отсутствует)
-	defaultStoreInterval    int64  = 300                       // Интервал сохранения данных в хранилище (в секундах)
-	defaultFileStoragePath  string = "../../temp_metrics.json" // Путь до файла хранилища (относительный)
-	defaultRestore          bool   = false                     // Флаг, указывающий загружать ли данные из хранилища при старте приложения
-	defaultConnectionString string = ""                        // Строка подключения к базе данных
+	defaultServerAddress    string = "localhost:8080"          // aдрес сервера
+	defaultHashKey          string = ""                        // ключ хэширования (отсутствует)
+	defaultStoreInterval    int64  = 300                       // интервал сохранения данных в хранилище (в секундах)
+	defaultFileStoragePath  string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
+	defaultRestore          bool   = false                     // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	defaultConnectionString string = ""                        // строка подключения к базе данных
 )
 
 // Config - структура, содержащая основные параметры приложения

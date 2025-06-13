@@ -18,11 +18,12 @@ type Service struct {
 	storSaveInterval int64
 }
 
+// Константы - основные ошибки сервиса.
 const (
-	MetricUncorrect        = "invalid metric"
-	MetricNotFound         = repository.ErrorMetricNotFound
-	UnexpectedMetricCreate = "create error"
-	UnexpectedMetricUpdate = "update error"
+	MetricUncorrect        = "invalid metric"               // ошибка, некорректная метрика
+	MetricNotFound         = repository.ErrorMetricNotFound // ошибка, метрика не найдена
+	UnexpectedMetricCreate = "create error"                 // ошибка создания метрики
+	UnexpectedMetricUpdate = "update error"                 // ошибка обновления значения метрики
 )
 
 func New(r repository.Repository, s storage.Storage, strInterval int64, l logger.Logger) *Service {

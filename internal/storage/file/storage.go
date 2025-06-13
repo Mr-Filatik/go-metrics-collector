@@ -11,8 +11,9 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 )
 
+// Костанты для работы с файловой системой.
 const (
-	filePermission os.FileMode = 0o600
+	filePermission os.FileMode = 0o600 // разрешения для работы с файлом
 )
 
 type FileStorage struct {

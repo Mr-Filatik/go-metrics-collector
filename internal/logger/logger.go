@@ -4,10 +4,11 @@ package logger
 
 type LogLevel uint32
 
+// Константы - уровни логирования.
 const (
-	LevelDebug LogLevel = 1
-	LevelInfo  LogLevel = 2
-	LevelError LogLevel = 3
+	LevelDebug LogLevel = 1 // уровень логирования debug
+	LevelInfo  LogLevel = 2 // уровень логирования info
+	LevelError LogLevel = 3 // уровень логирования error
 )
 
 type Logger interface {

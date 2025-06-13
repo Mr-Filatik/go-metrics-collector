@@ -9,9 +9,10 @@ import (
 
 type LogLevel = logger.LogLevel
 
+// Константы - уровни логирования.
 const (
-	LevelDebug = logger.LevelDebug
-	LevelInfo  = logger.LevelInfo
+	LevelDebug = logger.LevelDebug // уровень логирования debug
+	LevelInfo  = logger.LevelInfo  // уровень логирования info
 )
 
 type ZapSugarLogger struct {
