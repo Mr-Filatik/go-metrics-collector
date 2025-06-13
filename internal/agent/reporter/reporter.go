@@ -1,3 +1,5 @@
+// Пакет reporter предоставляет реализацию воркера для отправки метрик на сервер.
+// Пакет использует клиент resty, поддерживает отправку наборами данных и их сжатие по алгоритму gzip.
 package reporter
 
 import (
@@ -21,12 +23,22 @@ import (
 )
 
 const (
-	EncodingType          = "gzip"
-	ContentEncodingHeader = "Content-Encoding"
-	AcceptEncodingHeader  = "Accept-Encoding"
-	HashHeader            = "HashSHA256"
+	EncodingType          = "gzip"             // тип кодирования
+	ContentEncodingHeader = "Content-Encoding" // заголовок кодирования контента
+	AcceptEncodingHeader  = "Accept-Encoding"  // заголовок поддерживаемого кодирования
+	HashHeader            = "HashSHA256"       // заголовок хеширования содержимого
 )
 
+// Run запускает цикл отправки метрик на удалённый сервер.
+// Создаёт пул воркеров и посылает сигналы на отправку каждые reportInterval секунд.
+//
+// Параметры:
+//   - m: объект метрик (AgentMetrics)
+//   - endpoint: адрес сервера, куда отправляются метрики
+//   - reportInterval: интервал отправки метрик (в секундах)
+//   - hashKey: ключ для хэширования метрик
+//   - lim: количество параллельных воркеров
+//   - log: логгер
 func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
 	jobs := make(chan interface{}, lim)
 	defer close(jobs)
@@ -43,104 +55,109 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey 
 }
 
 func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.Logger, jobs <-chan interface{}) {
-	for range jobs {
-		client := resty.New()
+	client := resty.New()
 
-		client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-			if hashKey != "" {
-				body := r.Body
-				if body != nil {
-					byteBody, ok := body.([]byte)
-					if !ok {
-						log.Error("Hashing body error", errors.New("body is not of type []byte"))
-						return nil
-					}
-
-					h := hmac.New(sha256.New, []byte(hashKey))
-					h.Write(byteBody)
-					hashBytes := h.Sum(nil)
-					hashStr := hex.EncodeToString(hashBytes)
-
-					r.Header.Set(HashHeader, hashStr)
-					log.Debug("HashSHA256 added to request headers", "hash", hashStr)
-				} else {
-					log.Error("Hashing body error", errors.New("body is empty"))
-				}
-			}
-
-			if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
-				body := r.Body
-				if body != nil {
-					byteBody, ok := body.([]byte)
-					if !ok {
-						log.Error("Compress body error", errors.New("body does not exist"))
-						return nil
-					}
-					compressedBody, err := compressBody(byteBody)
-					if err != nil {
-						log.Error("Compress body error", err)
-						return nil
-					}
-					if compressedBody != nil {
-						log.Debug("Compress body",
-							"fromSize", len(byteBody),
-							"toSize", len(compressedBody))
-						r.SetBody(compressedBody)
-					}
-				} else {
-					log.Error("Compress body error", errors.New("body is empty"))
-				}
-			}
-
-			for name, values := range r.Header {
-				for _, value := range values {
-					log.Debug("Request header",
-						"name", name,
-						"value", value)
-				}
-			}
-			return nil
-		})
-
-		client.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
-			for name, values := range r.Header() {
-				for _, value := range values {
-					log.Debug("Response header",
-						"name", name,
-						"value", value)
-				}
-			}
-			if strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
-				val, err := decompressBody(r.Body())
-				if err != nil {
-					if err.Error() == "gzip: invalid header" {
-						log.Error("Decompress body error", errors.New("body not compress"))
-					} else {
-						log.Error("Decompress body error", err)
-					}
+	client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
+		if hashKey != "" {
+			body := r.Body
+			if body != nil {
+				byteBody, ok := body.([]byte)
+				if !ok {
+					log.Error("Hashing body error", errors.New("body is not of type []byte"))
 					return nil
 				}
-				log.Debug("Decompress body",
-					"fromSize", len(r.Body()),
-					"toSize", len(val))
-				r.SetBody(val)
-			}
-			return nil
-		})
 
+				h := hmac.New(sha256.New, []byte(hashKey))
+				h.Write(byteBody)
+				hashBytes := h.Sum(nil)
+				hashStr := hex.EncodeToString(hashBytes)
+
+				r.Header.Set(HashHeader, hashStr)
+				log.Debug("HashSHA256 added to request headers", "hash", hashStr)
+			} else {
+				log.Error("Hashing body error", errors.New("body is empty"))
+			}
+		}
+
+		if strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
+			body := r.Body
+			if body != nil {
+				byteBody, ok := body.([]byte)
+				if !ok {
+					log.Error("Compress body error", errors.New("body does not exist"))
+					return nil
+				}
+				compressedBody, err := compressBody(byteBody)
+				if err != nil {
+					log.Error("Compress body error", err)
+					return nil
+				}
+				if compressedBody != nil {
+					log.Debug("Compress body",
+						"fromSize", len(byteBody),
+						"toSize", len(compressedBody))
+					r.SetBody(compressedBody)
+				}
+			} else {
+				log.Error("Compress body error", errors.New("body is empty"))
+			}
+		}
+
+		headers := r.Header
+		for name := range r.Header {
+			for i := range headers[name] {
+				log.Debug("Request header",
+					"name", name,
+					"value", headers[name][i])
+			}
+		}
+		return nil
+	})
+
+	client.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
+		headers := r.Header()
+		for name := range headers {
+			for i := range headers[name] {
+				log.Debug("Response header",
+					"name", name,
+					"value", headers[name][i])
+			}
+		}
+		if strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
+			val, err := decompressBody(r.Body())
+			if err != nil {
+				if err.Error() == "gzip: invalid header" {
+					log.Error("Decompress body error", errors.New("body not compress"))
+				} else {
+					log.Error("Decompress body error", err)
+				}
+				return nil
+			}
+			log.Debug("Decompress body",
+				"fromSize", len(r.Body()),
+				"toSize", len(val))
+			r.SetBody(val)
+		}
+		return nil
+	})
+
+	for range jobs {
 		var metrics []entity.Metrics
-		for _, el := range m.GetAllGauge() {
-			if num, err := strconv.ParseFloat(el.Value, 64); err == nil {
+		gMetrics := m.GetAllGaugeNames()
+		for i := range gMetrics {
+			met := m.GetByName(gMetrics[i])
+			if num, err := strconv.ParseFloat(met.Value, 64); err == nil {
 				mc := entity.Metrics{
-					ID:    el.Name,
-					MType: el.Type,
+					ID:    met.Name,
+					MType: met.Type,
 					Value: &num,
 				}
 				metrics = append(metrics, mc)
 			}
 		}
-		for _, el := range m.GetAllCounter() {
-			met := m.GetCounter(el)
+		cMetrics := m.GetAllCounterNames()
+		for i := range cMetrics {
+			met := m.GetByName(cMetrics[i])
 			if num, err := strconv.ParseInt(met.Value, 10, 64); err == nil {
 				mc := entity.Metrics{
 					ID:    met.Name,
@@ -184,8 +201,8 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 			continue
 		}
 
-		for _, el := range m.GetAllCounter() {
-			m.ClearCounter(el)
+		for i := range cMetrics {
+			m.ClearCounter(cMetrics[i])
 		}
 
 		log.Info("Response success",

@@ -1,3 +1,5 @@
+// Пакет config предоставляет функционал загрузки конфигурации из флагов командной строки и переменных окружения.
+// Конфигурация включает такие параметры как: адрес сервера, настройки хранилища, путь до хранилища и т.п.
 package config
 
 import (
@@ -6,24 +8,32 @@ import (
 	"strconv"
 )
 
+// Костанты - значения по умолчанию.
 const (
-	defaultServerAddress    string = "localhost:8080"
-	defaultHashKey          string = ""
-	defaultStoreInterval    int64  = 300
-	defaultFileStoragePath  string = "../../temp_metrics.json"
+	defaultServerAddress   string = "localhost:8080"          // aдрес сервера
+	defaultHashKey         string = ""                        // ключ хэширования (отсутствует)
+	defaultStoreInterval   int64  = 300                       // интервал сохранения данных в хранилище (в секундах)
+	defaultFileStoragePath string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
+	// Флаг, указывающий загружать ли данные из хранилища при старте приложения.
 	defaultRestore          bool   = false
-	defaultConnectionString string = ""
+	defaultConnectionString string = "" // строка подключения к базе данных
 )
 
+// Config - структура, содержащая основные параметры приложения.
 type Config struct {
-	ServerAddress    string
-	HashKey          string
-	FileStoragePath  string
-	ConnectionString string
-	StoreInterval    int64
-	Restore          bool
+	ServerAddress    string // адрес сервера
+	HashKey          string // ключ хэширования
+	FileStoragePath  string // интервал сохранения данных в хранилище (в секундах)
+	ConnectionString string // путь до файла хранилища (относительный)
+	StoreInterval    int64  // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	Restore          bool   // строка подключения к базе данных
 }
 
+// Initialize создаёт и иницализирует объект *Config.
+// Значения присваиваются в следующем порядке (переприсваивают):
+//   - значения по умолчания;
+//   - значения из флагов командной строки;
+//   - значения из переменных окружения.
 func Initialize() *Config {
 	config := Config{
 		ServerAddress:    defaultServerAddress,

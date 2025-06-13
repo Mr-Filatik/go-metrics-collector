@@ -1,0 +1,4 @@
+cd ..\..\
+goimports -w .
+
+pause
