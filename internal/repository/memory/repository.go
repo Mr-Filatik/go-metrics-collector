@@ -128,7 +128,7 @@ func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
 	return 0, 0, errors.New(repository.ErrorMetricNotFound)
 }
 
-// Update удаляет метрику или возвращает ошибку.
+// Remove удаляет метрику или возвращает ошибку.
 //
 // Параметры:
 //   - e: метрика

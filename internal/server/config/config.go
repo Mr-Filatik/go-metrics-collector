@@ -14,7 +14,7 @@ const (
 	defaultHashKey         string = ""                        // ключ хэширования (отсутствует)
 	defaultStoreInterval   int64  = 300                       // интервал сохранения данных в хранилище (в секундах)
 	defaultFileStoragePath string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
-	// флаг, указывающий загружать ли данные из хранилища при старте приложения
+	// Флаг, указывающий загружать ли данные из хранилища при старте приложения.
 	defaultRestore          bool   = false
 	defaultConnectionString string = "" // строка подключения к базе данных
 )

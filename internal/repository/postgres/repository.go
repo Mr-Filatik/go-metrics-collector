@@ -213,7 +213,7 @@ func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 	return value, delta, nil
 }
 
-// Update удаляет метрику или возвращает ошибку.
+// Remove удаляет метрику или возвращает ошибку.
 //
 // Параметры:
 //   - e: метрика
