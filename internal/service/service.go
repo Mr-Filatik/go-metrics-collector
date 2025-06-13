@@ -11,11 +11,13 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/storage"
 )
 
+// Service представляет основную логику приложения.
+// Использует или репозиторий или хранилище для хранения данных.
 type Service struct {
-	repository       repository.Repository
-	storage          storage.Storage
-	log              logger.Logger
-	storSaveInterval int64
+	repository       repository.Repository // репозиторий
+	storage          storage.Storage       // хранилище
+	log              logger.Logger         // логгер
+	storSaveInterval int64                 // интервал сохранения данных (в секундах)
 }
 
 // Константы - основные ошибки сервиса.

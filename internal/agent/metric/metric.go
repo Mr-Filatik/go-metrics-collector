@@ -20,10 +20,10 @@ var (
 	gaugeNames   []string
 )
 
-// Основной тип, реализующий логику сбора и обновления метрик.
+// AgentMetrics хранит информацию о метриках приложения.
 type AgentMetrics struct {
-	Metrics   map[string]*Metric // Коллекция всех метрик
-	PollCount int64              // Количество вызовов Update
+	Metrics   map[string]*Metric // коллекция всех метрик
+	PollCount int64              // количество вызовов Update
 }
 
 // New создаёт и иницализирует объект *AgentMetrics.
@@ -232,8 +232,9 @@ func (metric *AgentMetrics) ClearCounter(name string) {
 	}
 }
 
+// Metric описывает метрику для передачи её серверу.
 type Metric struct {
-	Type  string `json:"type"`
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Type  string `json:"type"`  // тип метрики
+	Name  string `json:"name"`  // уникальное название метрики
+	Value string `json:"value"` // значение метрики
 }

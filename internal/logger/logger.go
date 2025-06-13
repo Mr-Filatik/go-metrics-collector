@@ -2,6 +2,7 @@
 // Необходимо для лёгкой и быстрой замены одной реализации логгера на другую.
 package logger
 
+// LogLevel описывает уровень логирования.
 type LogLevel uint32
 
 // Константы - уровни логирования.
@@ -11,12 +12,13 @@ const (
 	LevelError LogLevel = 3 // уровень логирования error
 )
 
+// Logger описывает интерфейс для всех логгеров используемых в проекте.
 type Logger interface {
-	Log(level LogLevel, message string, keysAndValues ...interface{})
-	Debug(message string, keysAndValues ...interface{})
-	Info(message string, keysAndValues ...interface{})
-	Error(message string, err error, keysAndValues ...interface{})
-	Close()
+	Log(level LogLevel, message string, keysAndValues ...interface{}) // общий метод логирования
+	Debug(message string, keysAndValues ...interface{})               // логирование с уровнем debug
+	Info(message string, keysAndValues ...interface{})                // логирование с уровнем info
+	Error(message string, err error, keysAndValues ...interface{})    // логирование с уровнем error
+	Close()                                                           // закрытие ресурсов связанных с логгером
 }
 
 func GetLevelName(logLevel LogLevel) string {

@@ -19,11 +19,11 @@ const (
 
 // Config - структура, содержащая основные параметры приложения
 type Config struct {
-	ServerAddress  string // Адрес сервера
-	HashKey        string // Ключ хэширования
-	PollInterval   int64  // Интервал опроса (в секундах)
-	ReportInterval int64  // Интервал отправки данных (в секундах)
-	RateLimit      int64  // Лимит запросов для агента
+	ServerAddress  string // адрес сервера
+	HashKey        string // ключ хэширования
+	PollInterval   int64  // интервал опроса (в секундах)
+	ReportInterval int64  // интервал отправки данных (в секундах)
+	RateLimit      int64  // лимит запросов для агента
 }
 
 // Initialize создаёт и иницализирует объект *Config.

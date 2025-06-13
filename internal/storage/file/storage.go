@@ -16,9 +16,10 @@ const (
 	filePermission os.FileMode = 0o600 // разрешения для работы с файлом
 )
 
+// FileStorage реализация хранилища для файловой системы.
 type FileStorage struct {
-	log      logger.Logger
-	filePath string
+	log      logger.Logger // логгер
+	filePath string        // путь до файла
 }
 
 func New(filePath string, log logger.Logger) *FileStorage {

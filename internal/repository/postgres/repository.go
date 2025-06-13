@@ -19,10 +19,11 @@ var (
 	ErrScanData        = errors.New("scan data error")
 )
 
+// PostgresRepository хранилище данных в базе данных Postgres.
 type PostgresRepository struct {
-	log    logger.Logger
-	conn   *pgxpool.Pool
-	dbConn string
+	log    logger.Logger // логгер
+	conn   *pgxpool.Pool // пул подключений к базе данных
+	dbConn string        // строка подключения к базе данных
 }
 
 func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {

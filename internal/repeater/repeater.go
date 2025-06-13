@@ -13,12 +13,13 @@ var (
 	ErrAttemptsOver = errors.New("attempts are over")
 )
 
+// Repeater позвляет повторить действие несколько раз, если при его выполнении не выполнилось условие.
 type Repeater[Tin any, Tout any] struct {
-	log       logger.Logger
-	action    func(Tin) (Tout, error)
-	condition func(error) bool
-	delays    []int
-	current   int
+	log       logger.Logger           // логгер
+	action    func(Tin) (Tout, error) // основное действие
+	condition func(error) bool        // условие для выхода из повторителя
+	delays    []int                   // задержки перед повторением
+	current   int                     // текущая попытка
 }
 
 func New[Tin any, Tout any](log logger.Logger) *Repeater[Tin, Tout] {

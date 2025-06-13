@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// LogLevel описывает уровень логирования.
 type LogLevel = logger.LogLevel
 
 // Константы - уровни логирования.
@@ -15,9 +16,10 @@ const (
 	LevelInfo  = logger.LevelInfo  // уровень логирования info
 )
 
+// ZapSugarLogger хранит информацию о логгере.
 type ZapSugarLogger struct {
-	logger      *zap.SugaredLogger
-	minLogLevel LogLevel
+	logger      *zap.SugaredLogger // ссылка на реализацию логгера
+	minLogLevel LogLevel           // минимальный уровень логирования
 }
 
 func New(minLogLevel LogLevel) *ZapSugarLogger {

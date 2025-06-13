@@ -18,14 +18,14 @@ const (
 	defaultConnectionString string = ""                        // строка подключения к базе данных
 )
 
-// Config - структура, содержащая основные параметры приложения
+// Config - структура, содержащая основные параметры приложения.
 type Config struct {
-	ServerAddress    string // Адрес сервера
-	HashKey          string // Ключ хэширования
-	FileStoragePath  string // Интервал сохранения данных в хранилище (в секундах)
-	ConnectionString string // Путь до файла хранилища (относительный)
-	StoreInterval    int64  // Флаг, указывающий загружать ли данные из хранилища при старте приложения
-	Restore          bool   // Строка подключения к базе данных
+	ServerAddress    string // адрес сервера
+	HashKey          string // ключ хэширования
+	FileStoragePath  string // интервал сохранения данных в хранилище (в секундах)
+	ConnectionString string // путь до файла хранилища (относительный)
+	StoreInterval    int64  // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	Restore          bool   // строка подключения к базе данных
 }
 
 // Initialize создаёт и иницализирует объект *Config.

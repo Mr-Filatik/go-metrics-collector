@@ -10,10 +10,11 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
 )
 
+// MemoryRepository хранилище данных в оперативной памяти.
 type MemoryRepository struct {
-	log    logger.Logger
-	dbConn string
-	datas  []entity.Metrics
+	log    logger.Logger    // логгер
+	dbConn string           // строка подключения
+	datas  []entity.Metrics // хранилище данных метрик
 }
 
 func New(dbConn string, l logger.Logger) *MemoryRepository {

@@ -17,11 +17,14 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Server представляет HTTP-сервер приложения.
+// Использует chi как маршрутизатор, service для бизнес-логики,
+// conveyor для обработки данных и logger для логирования.
 type Server struct {
-	router   *chi.Mux
-	service  *service.Service
-	conveyor *middleware.Conveyor
-	log      logger.Logger
+	router   *chi.Mux             // роутер
+	service  *service.Service     // сервис с основной логикой
+	conveyor *middleware.Conveyor // конвейер для middleware
+	log      logger.Logger        // логгер
 }
 
 func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
