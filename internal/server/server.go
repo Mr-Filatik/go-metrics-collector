@@ -27,6 +27,12 @@ type Server struct {
 	log      logger.Logger        // логгер
 }
 
+// NewServer создаёт и инициализирует новый экзепляр *Server.
+//
+// Параметры:
+//   - s: слой сервиса с основной логикой
+//   - hashKey: ключ хэширования
+//   - l: логгер
 func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
 	srv := Server{
 		router:   chi.NewRouter(),
@@ -50,6 +56,11 @@ func (s *Server) routes() {
 	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
 }
 
+// Start запускает сервер по указанному адресу.
+//
+// Параметры:
+//   - serverAddress: адрес запуска сервера
+//   - restore: флаг, указывающий, загружать ли данные перед началом
 func (s *Server) Start(serverAddress string, restore bool) {
 	s.service.Start(restore)
 
@@ -66,6 +77,11 @@ func (s *Server) Start(serverAddress string, restore bool) {
 	s.service.Stop()
 }
 
+// Ping проверяет доступность сервера.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
@@ -78,6 +94,11 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetAllMetrics запрашивает получение всех метрик.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
@@ -92,6 +113,11 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	s.serverResponceWithJSON(w, mArr)
 }
 
+// UpdateAllMetrics обновление всех метрик.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
@@ -117,6 +143,11 @@ func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetMetric получение одной метрики.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
@@ -155,6 +186,11 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetMetricJSON получение одной метрики в формате JSON.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
@@ -184,6 +220,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	s.serverResponceWithJSON(w, m)
 }
 
+// UpdateMetric обновление значения одной метрики.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
@@ -207,6 +248,11 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdateMetricJSON обновление значения одной метрики в формате JSON.
+//
+// Параметры:
+//   - w: ResponseWriter
+//   - r: запрос
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {

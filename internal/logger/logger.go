@@ -21,6 +21,10 @@ type Logger interface {
 	Close()                                                           // закрытие ресурсов связанных с логгером
 }
 
+// GetLevelName преобразует уровень логирования в строку.
+//
+// Параметры:
+//   - logLevel: уровень логирования
 func GetLevelName(logLevel LogLevel) string {
 	switch logLevel {
 	case LevelDebug:

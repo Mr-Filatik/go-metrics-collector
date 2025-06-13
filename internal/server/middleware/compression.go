@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// WithCompressedGzip добавляет сжатие в middleware.
+//
+// Параметры:
+//   - next: следующий обработчик
 func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		valueContent := r.Header.Get("Content-Type")

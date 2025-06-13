@@ -26,6 +26,11 @@ type PostgresRepository struct {
 	dbConn string        // строка подключения к базе данных
 }
 
+// New создаёт и инициализирует новый экзепляр *PostgresRepository.
+//
+// Параметры:
+//   - dbConn: строка подключения к базе данных
+//   - l: логгер
 func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
 	conn, err := repeater.New[string, *pgxpool.Pool](l).
 		SetFunc(func(c string) (*pgxpool.Pool, error) {
@@ -85,6 +90,7 @@ func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
 	}, nil
 }
 
+// Ping проверяет доступность и готовность репозитория.
 func (r *PostgresRepository) Ping() error {
 	err := r.conn.Ping(context.Background())
 	if err != nil {
@@ -96,6 +102,7 @@ func (r *PostgresRepository) Ping() error {
 	return nil
 }
 
+// GetAll возвращает все хранящиеся метрики или ошибку.
 func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	rows, err := r.conn.Query(context.Background(),
 		"SELECT id, mtype, value, delta FROM metrics")
@@ -127,6 +134,10 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 	return metrics, nil
 }
 
+// GetByID возвращает метрику по идентификатору или ошибку.
+//
+// Параметры:
+//   - id: идентификатор метрики
 func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 	var m entity.Metrics
 	err := r.conn.QueryRow(context.Background(),
@@ -150,6 +161,10 @@ func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 	return m, nil
 }
 
+// Create создаёт новую метрику или возвращает ошибку.
+//
+// Параметры:
+//   - e: метрика
 func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"INSERT INTO metrics (id, mtype, value, delta) VALUES ($1, $2, $3, $4)", e.ID, e.MType, e.Value, e.Delta)
@@ -168,6 +183,10 @@ func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
 	return e.ID, nil
 }
 
+// Update обновляет значение метрики или возвращает ошибку.
+//
+// Параметры:
+//   - e: метрика
 func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 	_, err := r.conn.Exec(context.Background(),
 		"UPDATE metrics SET mtype = $1, value = $2, delta = $3 WHERE id = $4", e.MType, e.Value, e.Delta, e.ID)
@@ -194,6 +213,10 @@ func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 	return value, delta, nil
 }
 
+// Update удаляет метрику или возвращает ошибку.
+//
+// Параметры:
+//   - e: метрика
 func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
 	_, err := r.conn.Exec(context.Background(), "DELETE FROM metrics WHERE id = $1", e.ID)
 	if err != nil {

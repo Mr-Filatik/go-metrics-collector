@@ -22,6 +22,11 @@ type FileStorage struct {
 	filePath string        // путь до файла
 }
 
+// New создаёт и инициализирует новый экзепляр *FileStorage.
+//
+// Параметры:
+//   - filePath: путь для сохранения файла
+//   - log: логгер
 func New(filePath string, log logger.Logger) *FileStorage {
 	return &FileStorage{
 		filePath: filePath,
@@ -29,6 +34,7 @@ func New(filePath string, log logger.Logger) *FileStorage {
 	}
 }
 
+// LoadData загружает данные из хранилища в приложение.
 func (s *FileStorage) LoadData() ([]entity.Metrics, error) {
 	if _, err := os.Stat(s.filePath); os.IsNotExist(err) {
 		return make([]entity.Metrics, 0), errors.New("file does not exist")
@@ -48,6 +54,10 @@ func (s *FileStorage) LoadData() ([]entity.Metrics, error) {
 	return metrics, nil
 }
 
+// SaveData сохраняет данные приложения в хранилища.
+//
+// Параметры:
+//   - data: метрики
 func (s *FileStorage) SaveData(data []entity.Metrics) error {
 	fd, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {

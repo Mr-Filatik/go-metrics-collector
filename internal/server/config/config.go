@@ -10,12 +10,13 @@ import (
 
 // Костанты - значения по умолчанию.
 const (
-	defaultServerAddress    string = "localhost:8080"          // aдрес сервера
-	defaultHashKey          string = ""                        // ключ хэширования (отсутствует)
-	defaultStoreInterval    int64  = 300                       // интервал сохранения данных в хранилище (в секундах)
-	defaultFileStoragePath  string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
-	defaultRestore          bool   = false                     // флаг, указывающий загружать ли данные из хранилища при старте приложения
-	defaultConnectionString string = ""                        // строка подключения к базе данных
+	defaultServerAddress   string = "localhost:8080"          // aдрес сервера
+	defaultHashKey         string = ""                        // ключ хэширования (отсутствует)
+	defaultStoreInterval   int64  = 300                       // интервал сохранения данных в хранилище (в секундах)
+	defaultFileStoragePath string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
+	// флаг, указывающий загружать ли данные из хранилища при старте приложения
+	defaultRestore          bool   = false
+	defaultConnectionString string = "" // строка подключения к базе данных
 )
 
 // Config - структура, содержащая основные параметры приложения.
@@ -30,9 +31,9 @@ type Config struct {
 
 // Initialize создаёт и иницализирует объект *Config.
 // Значения присваиваются в следующем порядке (переприсваивают):
-// - значения по умолчания
-// - значения из флагов командной строки
-// - значения из переменных окружения
+//   - значения по умолчания;
+//   - значения из флагов командной строки;
+//   - значения из переменных окружения.
 func Initialize() *Config {
 	config := Config{
 		ServerAddress:    defaultServerAddress,

@@ -13,6 +13,11 @@ type Conveyor struct {
 	hashKey string        // ключ хеширования
 }
 
+// New создаёт и инициализирует новый экзепляр *Conveyor.
+//
+// Параметры:
+//   - hashKey: ключ хэширования
+//   - l: логгер
 func New(hashKey string, l logger.Logger) *Conveyor {
 	return &Conveyor{
 		log:     l,
@@ -23,6 +28,10 @@ func New(hashKey string, l logger.Logger) *Conveyor {
 // Middleware описывает сущность для middleware.
 type Middleware func(http.Handler) http.Handler
 
+// MainConveyor создаёт основную последовательность middleware.
+//
+// Параметры:
+//   - h: обработчик
 func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
 	if c.hashKey != "" {
 		return c.registerConveyor(h, c.WithHashValidation, c.WithCompressedGzip, c.WithLogging)

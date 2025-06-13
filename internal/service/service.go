@@ -28,6 +28,13 @@ const (
 	UnexpectedMetricUpdate = "update error"                 // ошибка обновления значения метрики
 )
 
+// New создаёт и инициализирует новый экзепляр *Service.
+//
+// Параметры:
+//   - r: репозиторий с данными
+//   - s: хранилище
+//   - strInterval: интервал сохранения данных (в секундах)
+//   - l: логгер
 func New(r repository.Repository, s storage.Storage, strInterval int64, l logger.Logger) *Service {
 	srvc := Service{
 		repository:       r,
@@ -39,6 +46,10 @@ func New(r repository.Repository, s storage.Storage, strInterval int64, l logger
 	return &srvc
 }
 
+// Start запускает основную логику приложения.
+//
+// Параметры:
+//   - restoreData: флаг, указывающий загружать ли данные при старте
 func (s *Service) Start(restoreData bool) {
 	if s.storage != nil && restoreData {
 		data, serr := s.storage.LoadData()
@@ -62,6 +73,7 @@ func (s *Service) Start(restoreData bool) {
 	}
 }
 
+// Stop останавливает основную логику приложения.
 func (s *Service) Stop() {
 	err := s.saveDataWithoutInterval()
 	if err != nil {
@@ -69,6 +81,7 @@ func (s *Service) Stop() {
 	}
 }
 
+// Ping проверяет доступность логики.
 func (s *Service) Ping() error {
 	err := s.repository.Ping()
 	if err != nil {
@@ -77,6 +90,7 @@ func (s *Service) Ping() error {
 	return nil
 }
 
+// GetAll возвращает все хранящиеся метрики.
 func (s *Service) GetAll() ([]entity.Metrics, error) {
 	vals, err := s.repository.GetAll()
 	if err != nil {
@@ -85,6 +99,11 @@ func (s *Service) GetAll() ([]entity.Metrics, error) {
 	return vals, nil
 }
 
+// Get получает одну метрику.
+//
+// Параметры:
+//   - id: идентификатор метрики
+//   - t: тип метрики
 func (s *Service) Get(id string, t string) (entity.Metrics, error) {
 	m, err := s.repository.GetByID(id)
 	if err != nil {
@@ -99,6 +118,11 @@ func (s *Service) Get(id string, t string) (entity.Metrics, error) {
 	return m, nil
 }
 
+// CreateOrUpdate обновляет значение метрики.
+// Если метрика не была создана - создаёт её.
+//
+// Параметры:
+//   - e: метрика
 func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 	m, err := s.repository.GetByID(e.ID)
 	if err != nil {

@@ -210,7 +210,8 @@ func (metric *AgentMetrics) GetAllCounterNames() []string {
 
 // GetByName возвращает метрику по имени. Если такой нет — возвращает пустую метрику.
 //
-//	name - имя метрики (string)
+// Параметры:
+//   - name: имя метрики
 func (metric *AgentMetrics) GetByName(name string) Metric {
 	met, ok := metric.Metrics[name]
 	if ok {
@@ -222,7 +223,8 @@ func (metric *AgentMetrics) GetByName(name string) Metric {
 
 // ClearCounter обнуляет значение для счётчика по его имени.
 //
-//	name - имя метрики (string)
+// Параметры:
+//   - name: имя метрики
 func (metric *AgentMetrics) ClearCounter(name string) {
 	if name == "PollCount" {
 		log.Printf("Clear counter metric. Name: %v.", name)

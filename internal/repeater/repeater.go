@@ -22,6 +22,10 @@ type Repeater[Tin any, Tout any] struct {
 	current   int                     // текущая попытка
 }
 
+// New создаёт и инициализирует новый объект *Repeater[Tin, Tout].
+//
+// Параметры:
+//   - log: логгер
 func New[Tin any, Tout any](log logger.Logger) *Repeater[Tin, Tout] {
 	return &Repeater[Tin, Tout]{
 		current:   0,
@@ -32,16 +36,28 @@ func New[Tin any, Tout any](log logger.Logger) *Repeater[Tin, Tout] {
 	}
 }
 
+// SetFunc устанавливает основное действие для повторения.
+//
+// Параметры:
+//   - f: функция
 func (r *Repeater[Tin, Tout]) SetFunc(f func(Tin) (Tout, error)) *Repeater[Tin, Tout] {
 	r.action = f
 	return r
 }
 
+// SetCondition устанавливает условие для повторения.
+//
+// Параметры:
+//   - c: функция условие
 func (r *Repeater[Tin, Tout]) SetCondition(c func(error) bool) *Repeater[Tin, Tout] {
 	r.condition = c
 	return r
 }
 
+// Run запускает повторитель.
+//
+// Параметры:
+//   - data: данные
 func (r *Repeater[Tin, Tout]) Run(data Tin) (Tout, error) {
 	if r.action == nil {
 		var zero Tout
