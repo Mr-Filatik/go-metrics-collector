@@ -1,3 +1,5 @@
+// Пакет repository предоставляет абстрактное описание интерфейса,
+// которому должнен соотвестовать любой репозиторий проекта.
 package repository
 
 import "github.com/Mr-Filatik/go-metrics-collector/internal/entity"

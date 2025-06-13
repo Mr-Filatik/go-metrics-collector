@@ -1,3 +1,4 @@
+// Пакет middleware предоставляет реализации всех middleware используемых в серверном приложении.
 package middleware
 
 import (

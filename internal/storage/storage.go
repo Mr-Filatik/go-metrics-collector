@@ -1,3 +1,5 @@
+// Пакет storage предоставляет абстрактное описание интерфейса,
+// которому должно соотвестовать любое хранилище проекта.
 package storage
 
 import "github.com/Mr-Filatik/go-metrics-collector/internal/entity"

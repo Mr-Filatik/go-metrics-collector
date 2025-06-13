@@ -1,3 +1,4 @@
+// Пакет entity содержит общие сущности для проектов.
 package entity
 
 const (

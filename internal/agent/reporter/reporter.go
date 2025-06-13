@@ -1,3 +1,5 @@
+// Пакет reporter предоставляет реализацию воркера для отправки метрик на сервер.
+// Пакет использует клиент resty, поддерживает отправку наборами данных и их сжатие по алгоритму gzip.
 package reporter
 
 import (
@@ -27,6 +29,16 @@ const (
 	HashHeader            = "HashSHA256"
 )
 
+// Run запускает цикл отправки метрик на удалённый сервер.
+// Создаёт пул воркеров и посылает сигналы на отправку каждые reportInterval секунд.
+//
+// Параметры:
+//   - m: объект метрик (AgentMetrics)
+//   - endpoint: адрес сервера, куда отправляются метрики
+//   - reportInterval: интервал отправки метрик (в секундах)
+//   - hashKey: ключ для хэширования метрик
+//   - lim: количество параллельных воркеров
+//   - log: логгер
 func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
 	jobs := make(chan interface{}, lim)
 	defer close(jobs)

@@ -1,3 +1,5 @@
+// Пакет repository предоставляет конкретную реализацию репозитория
+// для доступа к postres-хранилищу.
 package repository
 
 import (

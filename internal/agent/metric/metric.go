@@ -1,3 +1,6 @@
+// Пакет metric предоставляет реализацию сбора и хранения системных метрик приложения.
+// Пакет содержит типы для работы с gauge и counter метриками,
+// а также методы обновления данных из runtime и gopsutil.
 package metric
 
 import (
@@ -17,11 +20,13 @@ var (
 	gaugeNames   []string
 )
 
+// Основной тип, реализующий логику сбора и обновления метрик.
 type AgentMetrics struct {
-	Metrics   map[string]*Metric
-	PollCount int64
+	Metrics   map[string]*Metric // Коллекция всех метрик
+	PollCount int64              // Количество вызовов Update
 }
 
+// New создаёт и иницализирует объект *AgentMetrics.
 func New() *AgentMetrics {
 	metrics := AgentMetrics{
 		PollCount: 0,
@@ -77,6 +82,7 @@ func New() *AgentMetrics {
 	return &metrics
 }
 
+// Update обновляет основные метрики, связанные с приложением.
 func (metric *AgentMetrics) Update() {
 	var mems runtime.MemStats
 	runtime.ReadMemStats(&mems)
@@ -172,6 +178,7 @@ func (metric *AgentMetrics) Update() {
 	log.Printf("Update metrics.")
 }
 
+// UpdateMemory обновляет все метрики, связанные с памятью и GC.
 func (metric *AgentMetrics) UpdateMemory() {
 	vals, err := mem.VirtualMemory()
 	if err != nil {
@@ -189,16 +196,21 @@ func (metric *AgentMetrics) UpdateMemory() {
 	log.Printf("Update memory metrics.")
 }
 
+// GetAllGaugeNames выводит список имён всех значений.
 func (metric *AgentMetrics) GetAllGaugeNames() []string {
 	log.Printf("Get all gauge metrics. Count: %v.", len(gaugeNames))
 	return gaugeNames
 }
 
+// GetAllCounterNames выводит список имён всех счётчиков.
 func (metric *AgentMetrics) GetAllCounterNames() []string {
 	log.Printf("Get all counter metrics. Count: %v.", len(counterNames))
 	return counterNames
 }
 
+// GetByName возвращает метрику по имени. Если такой нет — возвращает пустую метрику.
+//
+//	name - имя метрики (string)
 func (metric *AgentMetrics) GetByName(name string) Metric {
 	met, ok := metric.Metrics[name]
 	if ok {
@@ -208,6 +220,9 @@ func (metric *AgentMetrics) GetByName(name string) Metric {
 	return Metric{}
 }
 
+// ClearCounter обнуляет значение для счётчика по его имени.
+//
+//	name - имя метрики (string)
 func (metric *AgentMetrics) ClearCounter(name string) {
 	if name == "PollCount" {
 		log.Printf("Clear counter metric. Name: %v.", name)
