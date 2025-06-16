@@ -1,3 +1,4 @@
+// Пакет repeater предоставляет реализацию сущности для повторения действий при ошибках, временных сбоях.
 package repeater
 
 import (
@@ -12,14 +13,19 @@ var (
 	ErrAttemptsOver = errors.New("attempts are over")
 )
 
+// Repeater позвляет повторить действие несколько раз, если при его выполнении не выполнилось условие.
 type Repeater[Tin any, Tout any] struct {
-	log       logger.Logger
-	action    func(Tin) (Tout, error)
-	condition func(error) bool
-	delays    []int
-	current   int
+	log       logger.Logger           // логгер
+	action    func(Tin) (Tout, error) // основное действие
+	condition func(error) bool        // условие для выхода из повторителя
+	delays    []int                   // задержки перед повторением
+	current   int                     // текущая попытка
 }
 
+// New создаёт и инициализирует новый объект *Repeater[Tin, Tout].
+//
+// Параметры:
+//   - log: логгер
 func New[Tin any, Tout any](log logger.Logger) *Repeater[Tin, Tout] {
 	return &Repeater[Tin, Tout]{
 		current:   0,
@@ -30,16 +36,28 @@ func New[Tin any, Tout any](log logger.Logger) *Repeater[Tin, Tout] {
 	}
 }
 
+// SetFunc устанавливает основное действие для повторения.
+//
+// Параметры:
+//   - f: функция
 func (r *Repeater[Tin, Tout]) SetFunc(f func(Tin) (Tout, error)) *Repeater[Tin, Tout] {
 	r.action = f
 	return r
 }
 
+// SetCondition устанавливает условие для повторения.
+//
+// Параметры:
+//   - c: функция условие
 func (r *Repeater[Tin, Tout]) SetCondition(c func(error) bool) *Repeater[Tin, Tout] {
 	r.condition = c
 	return r
 }
 
+// Run запускает повторитель.
+//
+// Параметры:
+//   - data: данные
 func (r *Repeater[Tin, Tout]) Run(data Tin) (Tout, error) {
 	if r.action == nil {
 		var zero Tout

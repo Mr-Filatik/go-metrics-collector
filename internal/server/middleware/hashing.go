@@ -1,3 +1,4 @@
+// Пакет middleware предоставляет реализации всех middleware используемых в серверном приложении.
 package middleware
 
 import (
@@ -11,6 +12,10 @@ import (
 	"strings"
 )
 
+// WithHashValidation добавляет хэширование в middleware.
+//
+// Параметры:
+//   - next: следующий обработчик
 func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hashFromHeader := r.Header.Get("HashSHA256")
