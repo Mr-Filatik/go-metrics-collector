@@ -8,7 +8,7 @@ import (
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 )
 
-// fakeAction возвращает действие, которое будет возвращать заданный результат и ошибки
+// fakeAction возвращает действие, которое будет возвращать заданный результат и ошибки.
 func fakeAction[T any, R any](result R, err error) func(T) (R, error) {
 	return func(t T) (R, error) {
 		return result, err
@@ -71,7 +71,7 @@ func TestRunActionNotSet(t *testing.T) {
 
 	result, err := r.Run("data")
 
-	if err != ErrActionNotSet {
+	if !errors.Is(err, ErrActionNotSet) {
 		t.Errorf("ожидаемая ошибка %v, получено %v", ErrActionNotSet, err)
 	}
 	if result != 0 {

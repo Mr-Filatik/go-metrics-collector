@@ -14,7 +14,7 @@ import (
 
 var _ repository.Repository = (*MockRepository)(nil)
 
-// MockRepository — реализация Repository для тестов
+// MockRepository — реализация Repository для тестов.
 type MockRepository struct {
 	GetByIDFunc func(id string) (entity.Metrics, error)
 	GetAllFunc  func() ([]entity.Metrics, error)
@@ -50,7 +50,7 @@ func (m MockRepository) Ping() error {
 
 var _ storage.Storage = (*MockStorage)(nil)
 
-// MockStorage — реализация Storage для тестов
+// MockStorage — реализация Storage для тестов.
 type MockStorage struct {
 	SaveDataFunc func([]entity.Metrics) error
 	LoadDataFunc func() ([]entity.Metrics, error)
