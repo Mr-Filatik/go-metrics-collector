@@ -1,6 +1,9 @@
 package main
 
 import (
+	"net/http"
+	_ "net/http/pprof"
+
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/agent/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
@@ -17,5 +20,10 @@ func main() {
 
 	go updater.Run(metrics, conf.PollInterval)
 	go updater.RunMemory(metrics, conf.PollInterval)
-	reporter.Run(metrics, conf.ServerAddress, conf.ReportInterval, conf.HashKey, conf.RateLimit, log)
+	go reporter.Run(metrics, conf.ServerAddress, conf.ReportInterval, conf.HashKey, conf.RateLimit, log)
+
+	err := http.ListenAndServe("localhost:8081", nil)
+	if err != nil {
+		log.Error("Server error", err)
+	}
 }

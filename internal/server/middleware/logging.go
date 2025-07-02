@@ -1,3 +1,4 @@
+// Пакет middleware предоставляет реализации всех middleware используемых в серверном приложении.
 package middleware
 
 import (
@@ -8,6 +9,10 @@ import (
 	"github.com/urfave/negroni"
 )
 
+// WithLogging добавляет логирование в middleware.
+//
+// Параметры:
+//   - next: следующий обработчик
 func (c *Conveyor) WithLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Request-Id") == "" {

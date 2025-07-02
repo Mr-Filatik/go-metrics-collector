@@ -1,3 +1,5 @@
+// Пакет storage предоставляет конкретную реализацию хранилища
+// для хранения данных в файловой системе.
 package storage
 
 import (
@@ -9,15 +11,22 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 )
 
+// Костанты для работы с файловой системой.
 const (
-	filePermission os.FileMode = 0o600
+	filePermission os.FileMode = 0o600 // разрешения для работы с файлом
 )
 
+// FileStorage реализация хранилища для файловой системы.
 type FileStorage struct {
-	log      logger.Logger
-	filePath string
+	log      logger.Logger // логгер
+	filePath string        // путь до файла
 }
 
+// New создаёт и инициализирует новый экзепляр *FileStorage.
+//
+// Параметры:
+//   - filePath: путь для сохранения файла
+//   - log: логгер
 func New(filePath string, log logger.Logger) *FileStorage {
 	return &FileStorage{
 		filePath: filePath,
@@ -25,6 +34,7 @@ func New(filePath string, log logger.Logger) *FileStorage {
 	}
 }
 
+// LoadData загружает данные из хранилища в приложение.
 func (s *FileStorage) LoadData() ([]entity.Metrics, error) {
 	if _, err := os.Stat(s.filePath); os.IsNotExist(err) {
 		return make([]entity.Metrics, 0), errors.New("file does not exist")
@@ -44,6 +54,10 @@ func (s *FileStorage) LoadData() ([]entity.Metrics, error) {
 	return metrics, nil
 }
 
+// SaveData сохраняет данные приложения в хранилища.
+//
+// Параметры:
+//   - data: метрики
 func (s *FileStorage) SaveData(data []entity.Metrics) error {
 	fd, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {

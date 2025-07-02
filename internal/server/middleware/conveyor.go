@@ -1,3 +1,4 @@
+// Пакет middleware предоставляет реализации всех middleware используемых в серверном приложении.
 package middleware
 
 import (
@@ -6,11 +7,17 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 )
 
+// Conveyor описывает сущность конвеера для регистрации middleware.
 type Conveyor struct {
-	log     logger.Logger
-	hashKey string
+	log     logger.Logger // логгер
+	hashKey string        // ключ хеширования
 }
 
+// New создаёт и инициализирует новый экзепляр *Conveyor.
+//
+// Параметры:
+//   - hashKey: ключ хэширования
+//   - l: логгер
 func New(hashKey string, l logger.Logger) *Conveyor {
 	return &Conveyor{
 		log:     l,
@@ -18,8 +25,13 @@ func New(hashKey string, l logger.Logger) *Conveyor {
 	}
 }
 
+// Middleware описывает сущность для middleware.
 type Middleware func(http.Handler) http.Handler
 
+// MainConveyor создаёт основную последовательность middleware.
+//
+// Параметры:
+//   - h: обработчик
 func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
 	if c.hashKey != "" {
 		return c.registerConveyor(h, c.WithHashValidation, c.WithCompressedGzip, c.WithLogging)
