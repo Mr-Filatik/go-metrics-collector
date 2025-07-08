@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -11,9 +12,20 @@ import (
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 )
 
+// go run -ldflags "-X main.buildVersion=v2.0.0 -X main.buildDate=2025-07-07 -X main.buildCommit=98d1d98".
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
 	log := logger.New(logger.LevelInfo)
 	defer log.Close()
+
+	log.Info(fmt.Sprintf("Build version: %v", buildVersion))
+	log.Info(fmt.Sprintf("Build date: %v", buildDate))
+	log.Info(fmt.Sprintf("Build commit: %v", buildCommit))
 
 	conf := config.Initialize()
 	metrics := metric.New()
