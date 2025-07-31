@@ -22,6 +22,8 @@ type ZapSugarLogger struct {
 	minLogLevel LogLevel           // минимальный уровень логирования
 }
 
+var _ logger.Logger = (*ZapSugarLogger)(nil)
+
 // New инициализирует и создаёт новый экземпляр *ZapSugarLogger.
 //
 // Параметры:
