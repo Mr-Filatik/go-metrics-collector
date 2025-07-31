@@ -133,21 +133,15 @@ func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
 // Параметры:
 //   - e: метрика
 func (r *MemoryRepository) Remove(e entity.Metrics) (string, error) {
-	newDatas := make([]entity.Metrics, (len(r.datas) - 1))
-	index := 0
 	for i, v := range r.datas {
-		if v.ID != e.ID {
-			newDatas[index] = r.datas[i]
-			index++
-		} else {
-			r.log.Debug(
-				"Deleting a metric in MemRepository",
-				"id", e.ID,
-			)
+		if v.ID == e.ID {
+			r.log.Debug("Deleting a metric in MemRepository", "id", e.ID)
 
-			index++
+			r.datas[i] = r.datas[len(r.datas)-1]
+			r.datas = r.datas[:len(r.datas)-1]
+
+			return e.ID, nil
 		}
 	}
-	r.datas = newDatas
-	return e.ID, nil
+	return "", errors.New(repository.ErrorMetricNotFound)
 }
