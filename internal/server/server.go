@@ -3,6 +3,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"log"
@@ -33,11 +34,11 @@ type Server struct {
 //   - s: слой сервиса с основной логикой
 //   - hashKey: ключ хэширования
 //   - l: логгер
-func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
+func NewServer(s *service.Service, hashKey string, privateKey *rsa.PrivateKey, l logger.Logger) *Server {
 	srv := Server{
 		router:   chi.NewRouter(),
 		service:  s,
-		conveyor: middleware.New(hashKey, l),
+		conveyor: middleware.New(hashKey, privateKey, l),
 		log:      l,
 	}
 	srv.routes()

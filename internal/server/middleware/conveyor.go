@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"crypto/rsa"
 	"net/http"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
@@ -9,8 +10,9 @@ import (
 
 // Conveyor описывает сущность конвеера для регистрации middleware.
 type Conveyor struct {
-	log     logger.Logger // логгер
-	hashKey string        // ключ хеширования
+	log        logger.Logger   // логгер
+	privateKey *rsa.PrivateKey // приватный ключ
+	hashKey    string          // ключ хеширования
 }
 
 // New создаёт и инициализирует новый экзепляр *Conveyor.
@@ -18,10 +20,11 @@ type Conveyor struct {
 // Параметры:
 //   - hashKey: ключ хэширования
 //   - l: логгер
-func New(hashKey string, l logger.Logger) *Conveyor {
+func New(hashKey string, privateKey *rsa.PrivateKey, l logger.Logger) *Conveyor {
 	return &Conveyor{
-		log:     l,
-		hashKey: hashKey,
+		log:        l,
+		privateKey: privateKey,
+		hashKey:    hashKey,
 	}
 }
 
@@ -34,7 +37,11 @@ type Middleware func(http.Handler) http.Handler
 //   - h: обработчик
 func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
 	if c.hashKey != "" {
-		return c.registerConveyor(h, c.WithHashValidation, c.WithCompressedGzip, c.WithLogging)
+		return c.registerConveyor(h,
+			c.WithHashValidation,
+			c.WithCompressedGzip,
+			c.WithDecryption(c.privateKey),
+			c.WithLogging)
 	}
 	return c.registerConveyor(h, c.WithCompressedGzip, c.WithLogging)
 }

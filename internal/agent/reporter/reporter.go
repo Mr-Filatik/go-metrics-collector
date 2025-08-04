@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
+	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
@@ -39,12 +41,19 @@ const (
 //   - hashKey: ключ для хэширования метрик
 //   - lim: количество параллельных воркеров
 //   - log: логгер
-func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
+func Run(
+	m *metric.AgentMetrics,
+	endpoint string,
+	reportInterval int64,
+	hashKey string,
+	lim int64,
+	publicKey *rsa.PublicKey,
+	log logger.Logger) {
 	jobs := make(chan interface{}, lim)
 	defer close(jobs)
 
 	for w := int64(1); w <= lim; w++ {
-		go worker(m, endpoint, hashKey, log, jobs)
+		go worker(m, endpoint, hashKey, publicKey, log, jobs)
 	}
 
 	t := time.Tick(time.Duration(reportInterval) * time.Second)
@@ -54,7 +63,13 @@ func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey 
 	}
 }
 
-func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.Logger, jobs <-chan interface{}) {
+func worker(
+	m *metric.AgentMetrics,
+	endpoint string,
+	hashKey string,
+	publicKey *rsa.PublicKey,
+	log logger.Logger,
+	jobs <-chan interface{}) {
 	client := resty.New()
 
 	client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
@@ -100,6 +115,25 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 				}
 			} else {
 				log.Error("Compress body error", errors.New("body is empty"))
+			}
+		}
+
+		if publicKey != nil {
+			body := r.Body
+			if body != nil {
+				byteBody, ok := body.([]byte)
+				if !ok {
+					log.Error("Encrypt body error", errors.New("body does not exist"))
+					return nil
+				}
+				encrypted, err := crypto.EncryptBig(byteBody, publicKey)
+				if err != nil {
+					log.Error("Encryption failed", err)
+					return nil
+				}
+				r.SetBody(encrypted)
+			} else {
+				log.Error("Encryption body error", errors.New("body is empty"))
 			}
 		}
 

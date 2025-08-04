@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/rsa"
 	"fmt"
 
+	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	repositoryMemory "github.com/Mr-Filatik/go-metrics-collector/internal/repository/memory"
 	repositoryPostgres "github.com/Mr-Filatik/go-metrics-collector/internal/repository/postgres"
@@ -43,6 +45,16 @@ func main() {
 		srvc = service.New(repo, stor, conf.StoreInterval, log)
 	}
 
-	serv := server.NewServer(srvc, conf.HashKey, log)
+	var key *rsa.PrivateKey = nil
+	if conf.CryptoKeyPath != "" {
+		k, err := crypto.LoadPrivateKey(conf.CryptoKeyPath)
+		if err != nil {
+			log.Error("Load private key error", err)
+			return
+		}
+		key = k
+	}
+
+	serv := server.NewServer(srvc, conf.HashKey, key, log)
 	serv.Start(conf.ServerAddress, conf.Restore)
 }
