@@ -15,12 +15,14 @@ const (
 	defaultPollInterval   int64  = 2                // интервал опроса (в секундах)
 	defaultReportInterval int64  = 10               // интервал отправки данных (в секундах)
 	defaultRateLimit      int64  = 1                // лимит запросов для агента
+	defaultCryptoKeyPath  string = ""               // путь до публичного ключа
 )
 
 // Config - структура, содержащая основные параметры приложения.
 type Config struct {
 	ServerAddress  string // адрес сервера
 	HashKey        string // ключ хэширования
+	CryptoKeyPath  string // путь до публичного ключа
 	PollInterval   int64  // интервал опроса (в секундах)
 	ReportInterval int64  // интервал отправки данных (в секундах)
 	RateLimit      int64  // лимит запросов для агента
@@ -35,6 +37,7 @@ func Initialize() *Config {
 	config := Config{
 		ServerAddress:  "http://" + defaultServerAddress,
 		HashKey:        defaultHashKey,
+		CryptoKeyPath:  defaultCryptoKeyPath,
 		PollInterval:   defaultPollInterval,
 		ReportInterval: defaultReportInterval,
 		RateLimit:      defaultRateLimit,
@@ -49,6 +52,7 @@ func Initialize() *Config {
 func (c *Config) getFlags() {
 	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
 	argKeyValue := flag.String("k", defaultHashKey, "Hash key")
+	argCryptoValue := flag.String("crypto-key", defaultCryptoKeyPath, "Public crypto key path")
 	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
 	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
 	argLimitValue := flag.Int64("l", defaultPollInterval, "Rate limit")
@@ -60,6 +64,9 @@ func (c *Config) getFlags() {
 	}
 	if argKeyValue != nil && *argKeyValue != "" {
 		c.HashKey = *argKeyValue
+	}
+	if argCryptoValue != nil && *argCryptoValue != "" {
+		c.CryptoKeyPath = *argCryptoValue
 	}
 	if argRepValue != nil && *argRepValue != 0 {
 		c.ReportInterval = *argRepValue
@@ -81,6 +88,11 @@ func (c *Config) getEnvironments() {
 	envKeyValue, ok := os.LookupEnv("KEY")
 	if ok && envKeyValue != "" {
 		c.HashKey = envKeyValue
+	}
+
+	envCryptoValue, ok := os.LookupEnv("CRYPTO_KEY")
+	if ok && envCryptoValue != "" {
+		c.CryptoKeyPath = envCryptoValue
 	}
 
 	envRepValue, ok := os.LookupEnv("REPORT_INTERVAL")

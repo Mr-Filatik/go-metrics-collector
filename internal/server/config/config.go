@@ -17,12 +17,14 @@ const (
 	// Флаг, указывающий загружать ли данные из хранилища при старте приложения.
 	defaultRestore          bool   = false
 	defaultConnectionString string = "" // строка подключения к базе данных
+	defaultCryptoKeyPath    string = "" // путь до приватного ключа
 )
 
 // Config - структура, содержащая основные параметры приложения.
 type Config struct {
 	ServerAddress    string // адрес сервера
 	HashKey          string // ключ хэширования
+	CryptoKeyPath    string // путь до приватного ключа
 	FileStoragePath  string // интервал сохранения данных в хранилище (в секундах)
 	ConnectionString string // путь до файла хранилища (относительный)
 	StoreInterval    int64  // флаг, указывающий загружать ли данные из хранилища при старте приложения
@@ -38,6 +40,7 @@ func Initialize() *Config {
 	config := Config{
 		ServerAddress:    defaultServerAddress,
 		HashKey:          defaultHashKey,
+		CryptoKeyPath:    defaultCryptoKeyPath,
 		StoreInterval:    defaultStoreInterval,
 		FileStoragePath:  defaultFileStoragePath,
 		Restore:          defaultRestore,
@@ -53,6 +56,7 @@ func Initialize() *Config {
 func (c *Config) getFlags() {
 	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
 	argKeyValue := flag.String("k", defaultHashKey, "Hash key")
+	argCryptoValue := flag.String("crypto-key", defaultCryptoKeyPath, "Public crypto key path")
 	argIntervalValue := flag.Int64("i", defaultStoreInterval, "Interval in seconds to save data")
 	argFileValue := flag.String("f", defaultFileStoragePath, "Path to file")
 	argRestoreValue := flag.Bool("r", defaultRestore, "Loading data when the application starts")
@@ -65,6 +69,9 @@ func (c *Config) getFlags() {
 	}
 	if argKeyValue != nil && *argKeyValue != "" {
 		c.HashKey = *argKeyValue
+	}
+	if argCryptoValue != nil && *argCryptoValue != "" {
+		c.CryptoKeyPath = *argCryptoValue
 	}
 	if argIntervalValue != nil && *argIntervalValue >= 0 {
 		c.StoreInterval = *argIntervalValue
@@ -89,6 +96,11 @@ func (c *Config) getEnvironments() {
 	envKeyValue, ok := os.LookupEnv("KEY")
 	if ok && envKeyValue != "" {
 		c.HashKey = envKeyValue
+	}
+
+	envCryptoValue, ok := os.LookupEnv("CRYPTO_KEY")
+	if ok && envCryptoValue != "" {
+		c.CryptoKeyPath = envCryptoValue
 	}
 
 	envStoreValue, ok := os.LookupEnv("STORE_INTERVAL")
