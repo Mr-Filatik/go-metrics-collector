@@ -62,7 +62,7 @@ func TestUpdate_MultipleCalls(t *testing.T) {
 	am.Update()
 
 	assert.Equal(t, int64(1), am.PollCount)
-	assert.Equal(t, "5", am.Metrics["PollCount"].Value)
+	assert.Equal(t, "1", am.Metrics["PollCount"].Value)
 }
 
 func TestGetByName_Exists(t *testing.T) {

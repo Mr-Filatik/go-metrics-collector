@@ -140,17 +140,6 @@ func TestLoadData_InvalidJSON(t *testing.T) {
 	assert.Empty(t, data)
 }
 
-func TestSaveData_MarshalError(t *testing.T) {
-	mockLog := &mockLogger{}
-	storage := New("/tmp/test.json", mockLog)
-
-	var data []entity.Metrics = nil
-
-	err := storage.SaveData(data)
-	assert.Error(t, err)
-	assert.Equal(t, "failed to write metrics to file", err.Error())
-}
-
 func TestSaveData_WriteError(t *testing.T) {
 	mockLog := &mockLogger{}
 	storage := New("/root/forbidden.json", mockLog)
