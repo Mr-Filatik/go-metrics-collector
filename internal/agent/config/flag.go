@@ -1,6 +1,10 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"fmt"
+	"os"
+)
 
 // configFlags - структура, содержащая основные флаги приложения.
 type configFlags struct {
@@ -20,20 +24,22 @@ type configFlags struct {
 	rateLimitIsValue      bool
 }
 
-// initializeFlags получает значения из аргументов командной строки.
-func initializeFlags() *configFlags {
+// getFlagsConfig получает конфиг из указанных аргументов.
+func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	config := &configFlags{}
 
-	argC := flag.String("c", "", "Path to JSON config file")
-	argConfig := flag.String("config", "", "Path to JSON config file")
-	argCryptoKey := flag.String("crypto-key", defaultCryptoKeyPath, "Public crypto key path")
-	argK := flag.String("k", defaultHashKey, "Hash key")
-	argA := flag.String("a", defaultServerAddress, "HTTP server endpoint")
-	argP := flag.Int64("p", defaultPollInterval, "Poll interval")
-	argR := flag.Int64("r", defaultReportInterval, "Report interval")
-	argL := flag.Int64("l", defaultRateLimit, "Rate limit")
+	argC := fs.String("c", "", "Path to JSON config file")
+	argConfig := fs.String("config", "", "Path to JSON config file")
+	argCryptoKey := fs.String("crypto-key", "", "Public crypto key path")
+	argK := fs.String("k", "", "Hash key")
+	argA := fs.String("a", "", "HTTP server endpoint")
+	argP := fs.Int64("p", 0, "Poll interval")
+	argR := fs.Int64("r", 0, "Report interval")
+	argL := fs.Int64("l", 0, "Rate limit")
 
-	flag.Parse()
+	if err := fs.Parse(args); err != nil {
+		return nil, fmt.Errorf("parse argument %w", err)
+	}
 
 	if argC != nil && *argC != "" {
 		config.configPath = *argC
@@ -68,7 +74,17 @@ func initializeFlags() *configFlags {
 		config.rateLimitIsValue = true
 	}
 
-	return config
+	return config, nil
+}
+
+// getFlagsConfigFromOS получает значения флагов из аргументов запуска приложения в ОС.
+func getFlagsConfigFromOS() (*configFlags, error) {
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	config, err := getFlagsConfig(fs, os.Args[1:])
+	if err != nil {
+		return nil, fmt.Errorf("get flag config %w", err)
+	}
+	return config, nil
 }
 
 // overrideConfigFromFlags переопределяет основной конфиг новыми значениями.

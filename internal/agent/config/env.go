@@ -23,35 +23,38 @@ type configEnvs struct {
 	rateLimitIsValue      bool
 }
 
-// initializeEnvs получает значения из переменных окружения.
-func initializeEnvs() *configEnvs {
+// envReader — интерфейс для чтения переменных окружения.
+type envReader func(key string) (string, bool)
+
+// getEnvsConfig получает значения из универсального хранилища.
+func getEnvsConfig(getenv envReader) *configEnvs {
 	config := &configEnvs{}
 
-	envConfig, ok := os.LookupEnv("CONFIG")
+	envConfig, ok := getenv("CONFIG")
 	if ok && envConfig != "" {
 		config.configPath = envConfig
 		config.configPathIsValue = true
 	}
 
-	envCryptoKey, ok := os.LookupEnv("CRYPTO_KEY")
+	envCryptoKey, ok := getenv("CRYPTO_KEY")
 	if ok && envCryptoKey != "" {
 		config.cryptoKeyPath = envCryptoKey
 		config.cryptoKeyPathIsValue = true
 	}
 
-	envKey, ok := os.LookupEnv("KEY")
+	envKey, ok := getenv("KEY")
 	if ok && envKey != "" {
 		config.hashKey = envKey
 		config.hashKeyIsValue = true
 	}
 
-	envAddress, ok := os.LookupEnv("ADDRESS")
+	envAddress, ok := getenv("ADDRESS")
 	if ok && envAddress != "" {
 		config.serverAddress = envAddress
 		config.serverAddressIsValue = true
 	}
 
-	envPollInterval, ok := os.LookupEnv("POLL_INTERVAL")
+	envPollInterval, ok := getenv("POLL_INTERVAL")
 	if ok && envPollInterval != "" {
 		if val, err := strconv.ParseInt(envPollInterval, 10, 64); err == nil {
 			config.pollInterval = val
@@ -59,7 +62,7 @@ func initializeEnvs() *configEnvs {
 		}
 	}
 
-	envReportInterval, ok := os.LookupEnv("REPORT_INTERVAL")
+	envReportInterval, ok := getenv("REPORT_INTERVAL")
 	if ok && envReportInterval != "" {
 		if val, err := strconv.ParseInt(envReportInterval, 10, 64); err == nil {
 			config.reportInterval = val
@@ -67,7 +70,7 @@ func initializeEnvs() *configEnvs {
 		}
 	}
 
-	envRateLimit, ok := os.LookupEnv("RATE_LIMIT")
+	envRateLimit, ok := getenv("RATE_LIMIT")
 	if ok && envRateLimit != "" {
 		if val, err := strconv.ParseInt(envRateLimit, 10, 64); err == nil {
 			config.rateLimit = val
@@ -76,6 +79,14 @@ func initializeEnvs() *configEnvs {
 	}
 
 	return config
+}
+
+// getEnvsConfigFromOS получает значения из переменных окружения.
+func getEnvsConfigFromOS() *configEnvs {
+	return getEnvsConfig(func(key string) (string, bool) {
+		value, ok := os.LookupEnv(key)
+		return value, ok
+	})
 }
 
 // overrideConfigFromEnvs переопределяет основной конфиг новыми значениями.

@@ -2,10 +2,6 @@
 // Конфигурация включает такие параметры как: адрес сервера, интервал опроса, интервал отправки и т.п.
 package config
 
-import (
-	"strings"
-)
-
 // Костанты - значения по умолчанию.
 const (
 	defaultServerAddress  string = "localhost:8080" // адрес сервера
@@ -33,17 +29,8 @@ type Config struct {
 //   - значения из флагов командной строки;
 //   - значения из переменных окружения.
 func Initialize() *Config {
-	config := Config{
-		ServerAddress:  "http://" + defaultServerAddress,
-		HashKey:        defaultHashKey,
-		CryptoKeyPath:  defaultCryptoKeyPath,
-		PollInterval:   defaultPollInterval,
-		ReportInterval: defaultReportInterval,
-		RateLimit:      defaultRateLimit,
-	}
-
-	envsConf := initializeEnvs()
-	flagsConf := initializeFlags()
+	envsConf := getEnvsConfigFromOS()
+	flagsConf, _ := getFlagsConfigFromOS()
 
 	var path string
 	if flagsConf.configPathIsValue {
@@ -53,23 +40,28 @@ func Initialize() *Config {
 		path = envsConf.configPath
 	}
 
-	fileConf, _ := initializeJSONs(path) // игнорируем ошибку, т.к. есть дефолтные значения
+	fileConf, _ := getJSONConfigFromFile(path) // игнорируем ошибку, т.к. есть дефолтные значения
+
+	config := createAndOverrideConfig(fileConf, flagsConf, envsConf)
+
+	config.ServerAddress = "http://" + stripHTTPPrefix(config.ServerAddress)
+
+	return config
+}
+
+func createAndOverrideConfig(fileConf *configJSONs, flagsConf *configFlags, envsConf *configEnvs) *Config {
+	config := &Config{
+		ServerAddress:  defaultServerAddress,
+		HashKey:        defaultHashKey,
+		CryptoKeyPath:  defaultCryptoKeyPath,
+		PollInterval:   defaultPollInterval,
+		ReportInterval: defaultReportInterval,
+		RateLimit:      defaultRateLimit,
+	}
 
 	config.overrideConfigFromJSONs(fileConf)
 	config.overrideConfigFromFlags(flagsConf)
 	config.overrideConfigFromEnvs(envsConf)
 
-	config.ServerAddress = "http://" + stripHTTPPrefix(config.ServerAddress)
-
-	return &config
-}
-
-func stripHTTPPrefix(addr string) string {
-	if strings.HasPrefix(addr, "http://") {
-		return addr[7:]
-	}
-	if strings.HasPrefix(addr, "https://") {
-		return addr[8:]
-	}
-	return addr
+	return config
 }
