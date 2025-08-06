@@ -38,23 +38,46 @@ func NewServer(s *service.Service, hashKey string, privateKey *rsa.PrivateKey, l
 	srv := Server{
 		router:   chi.NewRouter(),
 		service:  s,
-		conveyor: middleware.New(hashKey, privateKey, l),
+		conveyor: middleware.New(l),
 		log:      l,
 	}
-	srv.routes()
+	srv.registerMiddlewares(hashKey, privateKey)
+	srv.registerRoutes()
 	return &srv
 }
 
-func (s *Server) routes() {
+func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey) {
+	ms := []middleware.Middleware{
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithLogging(h)
+		},
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithDecryption(h, privateKey)
+		},
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithCompressedGzip(h)
+		},
+	}
+
+	if hashKey != "" {
+		ms = append(ms, func(h http.Handler) http.Handler {
+			return s.conveyor.WithHashValidation(h, hashKey)
+		})
+	}
+
+	s.conveyor.RegisterMiddlewares(ms...)
+}
+
+func (s *Server) registerRoutes() {
 	s.router.Mount("/debug", http.DefaultServeMux)
 
-	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
-	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/updates/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
-	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
-	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
-	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
-	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
+	s.router.Handle("/ping", s.conveyor.Middlewares(http.HandlerFunc(s.Ping)))
+	s.router.Handle("/", s.conveyor.Middlewares(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/updates/", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateAllMetrics)))
+	s.router.Handle("/value/", s.conveyor.Middlewares(http.HandlerFunc(s.GetMetricJSON)))
+	s.router.Handle("/update/", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateMetricJSON)))
+	s.router.Handle("/value/{type}/{name}", s.conveyor.Middlewares(http.HandlerFunc(s.GetMetric)))
+	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateMetric)))
 }
 
 // Start запускает сервер по указанному адресу.
