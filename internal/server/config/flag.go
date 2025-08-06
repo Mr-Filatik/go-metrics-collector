@@ -76,7 +76,7 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 		config.storeInterval = *argI
 		config.storeIntervalIsValue = true
 	}
-	if argR != nil && !*argR {
+	if argR != nil && *argR {
 		config.restore = *argR
 		config.restoreIsValue = true
 	}

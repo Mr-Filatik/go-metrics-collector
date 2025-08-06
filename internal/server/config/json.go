@@ -58,7 +58,7 @@ func getJSONConfig(r io.Reader) (*configJSONs, error) {
 		config.StoreInterval = c.StoreInterval
 		config.storeIntervalIsValue = true
 	}
-	if !c.Restore {
+	if c.Restore {
 		config.Restore = c.Restore
 		config.restoreIsValue = true
 	}

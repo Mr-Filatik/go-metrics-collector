@@ -41,7 +41,7 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 	envDatabaseDSN, ok := getenv("DATABASE_DSN")
 	if ok && envDatabaseDSN != "" {
 		config.connString = envDatabaseDSN
-		config.configPathIsValue = true
+		config.connStringIsValue = true
 	}
 
 	envCryptoKey, ok := getenv("CRYPTO_KEY")
