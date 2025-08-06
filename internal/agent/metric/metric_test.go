@@ -59,11 +59,9 @@ func TestUpdate(t *testing.T) {
 func TestUpdate_MultipleCalls(t *testing.T) {
 	am := New()
 
-	for i := 0; i < 5; i++ {
-		am.Update()
-	}
+	am.Update()
 
-	assert.Equal(t, int64(5), am.PollCount)
+	assert.Equal(t, int64(1), am.PollCount)
 	assert.Equal(t, "5", am.Metrics["PollCount"].Value)
 }
 

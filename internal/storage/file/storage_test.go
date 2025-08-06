@@ -41,16 +41,21 @@ func (m *mockLogger) Warn(msg string, keyvals ...interface{}) {
 func (m *mockLogger) Close() {}
 
 func createTempFile(t *testing.T, content []byte) string {
+	t.Helper()
 	file, err := os.CreateTemp("", "metrics_*.json")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		os.Remove(file.Name())
+		if err := os.Remove(file.Name()); err != nil {
+			assert.NoError(t, err)
+		}
 	})
 	if content != nil {
 		_, err = file.Write(content)
 		require.NoError(t, err)
 	}
-	file.Close()
+	if err := file.Close(); err != nil {
+		assert.NoError(t, err)
+	}
 	return file.Name()
 }
 
