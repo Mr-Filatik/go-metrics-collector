@@ -82,7 +82,7 @@ func TestSaveData_Success(t *testing.T) {
 
 	info, err := os.Stat(tmpFile)
 	require.NoError(t, err)
-	assert.NotEqual(t, filePermission, info.Mode().Perm())
+	assert.Equal(t, filePermission, info.Mode().Perm()) // on Windows dont work
 
 	content, err := os.ReadFile(tmpFile)
 	require.NoError(t, err)
