@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateAndOverrideConfig(t *testing.T) {
-	mockFileConf := &configJSONs{
+	fileConf := &configJSONs{
 		CryptoKeyPath:         "file crypto path",
 		cryptoKeyPathIsValue:  true,
 		ReportInterval:        88,
@@ -19,20 +19,20 @@ func TestCreateAndOverrideConfig(t *testing.T) {
 		pollIntervalIsValue:   true,
 		ServerAddress:         "file address", // не указано true в serverAddressIsValue
 	}
-	mockFlagsConf := &configFlags{
+	flagsConf := &configFlags{
 		cryptoKeyPath:         "flags crypto path",
 		cryptoKeyPathIsValue:  true,
 		reportInterval:        120,
 		reportIntervalIsValue: true,
 		serverAddress:         "flags address", // не указано true в serverAddressIsValue
 	}
-	mockEnvsConf := &configEnvs{
+	envsConf := &configEnvs{
 		cryptoKeyPath:        "envs crypto path",
 		cryptoKeyPathIsValue: true,
 		serverAddress:        "envs address", // не указано true в serverAddressIsValue
 	}
 
-	config := createAndOverrideConfig(mockFileConf, mockFlagsConf, mockEnvsConf)
+	config := createAndOverrideConfig(fileConf, flagsConf, envsConf)
 
 	assert.Equal(t, defaultServerAddress, config.ServerAddress)
 	assert.Equal(t, defaultHashKey, config.HashKey)
@@ -44,9 +44,9 @@ func TestCreateAndOverrideConfig(t *testing.T) {
 
 func TestGetEnvsConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		env            map[string]string
-		expectedConfig configEnvs
+		name     string
+		env      map[string]string
+		expected configEnvs
 	}{
 		{
 			name: "full values",
@@ -59,7 +59,7 @@ func TestGetEnvsConfig(t *testing.T) {
 				"REPORT_INTERVAL": "15",
 				"RATE_LIMIT":      "5",
 			},
-			expectedConfig: configEnvs{
+			expected: configEnvs{
 				configPath:            "/config.json",
 				configPathIsValue:     true,
 				cryptoKeyPath:         "/keys/public.pem",
@@ -82,7 +82,7 @@ func TestGetEnvsConfig(t *testing.T) {
 				"ADDRESS":       "localhost:9090",
 				"POLL_INTERVAL": "2",
 			},
-			expectedConfig: configEnvs{
+			expected: configEnvs{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -102,7 +102,7 @@ func TestGetEnvsConfig(t *testing.T) {
 		{
 			name: "empty values",
 			env:  map[string]string{},
-			expectedConfig: configEnvs{
+			expected: configEnvs{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -130,35 +130,35 @@ func TestGetEnvsConfig(t *testing.T) {
 
 			config := getEnvsConfig(mockEnv)
 
-			assert.Equal(t, tt.expectedConfig.configPath, config.configPath)
-			assert.Equal(t, tt.expectedConfig.configPathIsValue, config.configPathIsValue)
+			assert.Equal(t, tt.expected.configPath, config.configPath)
+			assert.Equal(t, tt.expected.configPathIsValue, config.configPathIsValue)
 
-			assert.Equal(t, tt.expectedConfig.cryptoKeyPath, config.cryptoKeyPath)
-			assert.Equal(t, tt.expectedConfig.cryptoKeyPathIsValue, config.cryptoKeyPathIsValue)
+			assert.Equal(t, tt.expected.cryptoKeyPath, config.cryptoKeyPath)
+			assert.Equal(t, tt.expected.cryptoKeyPathIsValue, config.cryptoKeyPathIsValue)
 
-			assert.Equal(t, tt.expectedConfig.hashKey, config.hashKey)
-			assert.Equal(t, tt.expectedConfig.hashKeyIsValue, config.hashKeyIsValue)
+			assert.Equal(t, tt.expected.hashKey, config.hashKey)
+			assert.Equal(t, tt.expected.hashKeyIsValue, config.hashKeyIsValue)
 
-			assert.Equal(t, tt.expectedConfig.serverAddress, config.serverAddress)
-			assert.Equal(t, tt.expectedConfig.serverAddressIsValue, config.serverAddressIsValue)
+			assert.Equal(t, tt.expected.serverAddress, config.serverAddress)
+			assert.Equal(t, tt.expected.serverAddressIsValue, config.serverAddressIsValue)
 
-			assert.Equal(t, tt.expectedConfig.pollInterval, config.pollInterval)
-			assert.Equal(t, tt.expectedConfig.pollIntervalIsValue, config.pollIntervalIsValue)
+			assert.Equal(t, tt.expected.pollInterval, config.pollInterval)
+			assert.Equal(t, tt.expected.pollIntervalIsValue, config.pollIntervalIsValue)
 
-			assert.Equal(t, tt.expectedConfig.reportInterval, config.reportInterval)
-			assert.Equal(t, tt.expectedConfig.reportIntervalIsValue, config.reportIntervalIsValue)
+			assert.Equal(t, tt.expected.reportInterval, config.reportInterval)
+			assert.Equal(t, tt.expected.reportIntervalIsValue, config.reportIntervalIsValue)
 
-			assert.Equal(t, tt.expectedConfig.rateLimit, config.rateLimit)
-			assert.Equal(t, tt.expectedConfig.rateLimitIsValue, config.rateLimitIsValue)
+			assert.Equal(t, tt.expected.rateLimit, config.rateLimit)
+			assert.Equal(t, tt.expected.rateLimitIsValue, config.rateLimitIsValue)
 		})
 	}
 }
 
 func TestGetFlagsConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           []string
-		expectedConfig configFlags
+		name     string
+		args     []string
+		expected configFlags
 	}{
 		{
 			name: "full values",
@@ -171,7 +171,7 @@ func TestGetFlagsConfig(t *testing.T) {
 				"-r", "15",
 				"-l", "5",
 			},
-			expectedConfig: configFlags{
+			expected: configFlags{
 				configPath:            "/config.json",
 				configPathIsValue:     true,
 				cryptoKeyPath:         "/keys/public.pem",
@@ -195,7 +195,7 @@ func TestGetFlagsConfig(t *testing.T) {
 				"-p", "2",
 				"-l", "1",
 			},
-			expectedConfig: configFlags{
+			expected: configFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -215,7 +215,7 @@ func TestGetFlagsConfig(t *testing.T) {
 		{
 			name: "empty values",
 			args: []string{},
-			expectedConfig: configFlags{
+			expected: configFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -242,104 +242,104 @@ func TestGetFlagsConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, config)
 
-			assert.Equal(t, tt.expectedConfig.configPath, config.configPath)
-			assert.Equal(t, tt.expectedConfig.configPathIsValue, config.configPathIsValue)
+			assert.Equal(t, tt.expected.configPath, config.configPath)
+			assert.Equal(t, tt.expected.configPathIsValue, config.configPathIsValue)
 
-			assert.Equal(t, tt.expectedConfig.cryptoKeyPath, config.cryptoKeyPath)
-			assert.Equal(t, tt.expectedConfig.cryptoKeyPathIsValue, config.cryptoKeyPathIsValue)
+			assert.Equal(t, tt.expected.cryptoKeyPath, config.cryptoKeyPath)
+			assert.Equal(t, tt.expected.cryptoKeyPathIsValue, config.cryptoKeyPathIsValue)
 
-			assert.Equal(t, tt.expectedConfig.hashKey, config.hashKey)
-			assert.Equal(t, tt.expectedConfig.hashKeyIsValue, config.hashKeyIsValue)
+			assert.Equal(t, tt.expected.hashKey, config.hashKey)
+			assert.Equal(t, tt.expected.hashKeyIsValue, config.hashKeyIsValue)
 
-			assert.Equal(t, tt.expectedConfig.serverAddress, config.serverAddress)
-			assert.Equal(t, tt.expectedConfig.serverAddressIsValue, config.serverAddressIsValue)
+			assert.Equal(t, tt.expected.serverAddress, config.serverAddress)
+			assert.Equal(t, tt.expected.serverAddressIsValue, config.serverAddressIsValue)
 
-			assert.Equal(t, tt.expectedConfig.pollInterval, config.pollInterval)
-			assert.Equal(t, tt.expectedConfig.pollIntervalIsValue, config.pollIntervalIsValue)
+			assert.Equal(t, tt.expected.pollInterval, config.pollInterval)
+			assert.Equal(t, tt.expected.pollIntervalIsValue, config.pollIntervalIsValue)
 
-			assert.Equal(t, tt.expectedConfig.reportInterval, config.reportInterval)
-			assert.Equal(t, tt.expectedConfig.reportIntervalIsValue, config.reportIntervalIsValue)
+			assert.Equal(t, tt.expected.reportInterval, config.reportInterval)
+			assert.Equal(t, tt.expected.reportIntervalIsValue, config.reportIntervalIsValue)
 
-			assert.Equal(t, tt.expectedConfig.rateLimit, config.rateLimit)
-			assert.Equal(t, tt.expectedConfig.rateLimitIsValue, config.rateLimitIsValue)
+			assert.Equal(t, tt.expected.rateLimit, config.rateLimit)
+			assert.Equal(t, tt.expected.rateLimitIsValue, config.rateLimitIsValue)
 		})
 	}
 }
 
 func TestGetJSONConfig(t *testing.T) {
 	tests := []struct {
-		name            string
-		jsonInput       string
-		expectedAddress string
-		expectedCrypto  string
-		expectedPoll    int64
-		expectedReport  int64
-		reportIsSet     bool
-		addressIsSet    bool
-		pollIsSet       bool
-		cryptoIsSet     bool
+		name     string
+		jsonData string
+		expected configJSONs
 	}{
 		{
 			name: "full config",
-			jsonInput: `{
+			jsonData: `{
 				"server_address": "localhost:8080", 
 				"crypto_key": "/keys/public.pem", 
 				"poll_interval": 5, 
 				"report_interval": 10
 			}`,
-			expectedAddress: "localhost:8080",
-			addressIsSet:    true,
-			expectedCrypto:  "/keys/public.pem",
-			cryptoIsSet:     true,
-			expectedPoll:    5,
-			pollIsSet:       true,
-			expectedReport:  10,
-			reportIsSet:     true,
+			expected: configJSONs{
+				ServerAddress:         "localhost:8080",
+				serverAddressIsValue:  true,
+				CryptoKeyPath:         "/keys/public.pem",
+				cryptoKeyPathIsValue:  true,
+				PollInterval:          5,
+				pollIntervalIsValue:   true,
+				ReportInterval:        10,
+				reportIntervalIsValue: true,
+			},
 		},
 		{
 			name: "partial config",
-			jsonInput: `{
+			jsonData: `{
 				"server_address": "localhost:8080",
-				"poll_interval": 5}`,
-			expectedAddress: "localhost:8080",
-			addressIsSet:    true,
-			expectedCrypto:  "",
-			cryptoIsSet:     false,
-			expectedPoll:    5,
-			pollIsSet:       true,
-			expectedReport:  0,
-			reportIsSet:     false,
+				"poll_interval": 5
+			}`,
+			expected: configJSONs{
+				ServerAddress:         "localhost:8080",
+				serverAddressIsValue:  true,
+				CryptoKeyPath:         "",
+				cryptoKeyPathIsValue:  false,
+				PollInterval:          5,
+				pollIntervalIsValue:   true,
+				ReportInterval:        0,
+				reportIntervalIsValue: false,
+			},
 		},
 		{
-			name:            "empty config",
-			jsonInput:       `{}`,
-			expectedAddress: "",
-			addressIsSet:    false,
-			expectedCrypto:  "",
-			cryptoIsSet:     false,
-			expectedPoll:    0,
-			pollIsSet:       false,
-			expectedReport:  0,
-			reportIsSet:     false,
+			name:     "empty config",
+			jsonData: `{}`,
+			expected: configJSONs{
+				ServerAddress:         "",
+				serverAddressIsValue:  false,
+				CryptoKeyPath:         "",
+				cryptoKeyPathIsValue:  false,
+				PollInterval:          0,
+				pollIntervalIsValue:   false,
+				ReportInterval:        0,
+				reportIntervalIsValue: false,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := getJSONConfig(strings.NewReader(tt.jsonInput))
+			config, err := getJSONConfig(strings.NewReader(tt.jsonData))
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.expectedAddress, config.ServerAddress)
-			assert.Equal(t, tt.addressIsSet, config.serverAddressIsValue)
+			assert.Equal(t, tt.expected.ServerAddress, config.ServerAddress)
+			assert.Equal(t, tt.expected.serverAddressIsValue, config.serverAddressIsValue)
 
-			assert.Equal(t, tt.expectedCrypto, config.CryptoKeyPath)
-			assert.Equal(t, tt.cryptoIsSet, config.cryptoKeyPathIsValue)
+			assert.Equal(t, tt.expected.CryptoKeyPath, config.CryptoKeyPath)
+			assert.Equal(t, tt.expected.cryptoKeyPathIsValue, config.cryptoKeyPathIsValue)
 
-			assert.Equal(t, tt.expectedPoll, config.PollInterval)
-			assert.Equal(t, tt.pollIsSet, config.pollIntervalIsValue)
+			assert.Equal(t, tt.expected.PollInterval, config.PollInterval)
+			assert.Equal(t, tt.expected.pollIntervalIsValue, config.pollIntervalIsValue)
 
-			assert.Equal(t, tt.expectedReport, config.ReportInterval)
-			assert.Equal(t, tt.reportIsSet, config.reportIntervalIsValue)
+			assert.Equal(t, tt.expected.ReportInterval, config.ReportInterval)
+			assert.Equal(t, tt.expected.reportIntervalIsValue, config.reportIntervalIsValue)
 		})
 	}
 }
