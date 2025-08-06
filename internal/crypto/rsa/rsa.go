@@ -175,7 +175,7 @@ func DecryptBig(combined []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	nonce, cipherblob := ciphertext[:gcm.NonceSize()], ciphertext[gcm.NonceSize():]
 	plaintext, err := gcm.Open(nil, nonce, cipherblob, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open GCM error %w", err)
 	}
 
 	return plaintext, nil
