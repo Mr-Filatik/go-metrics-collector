@@ -139,7 +139,7 @@ func (c *Config) getFlags() {
 
 func (c *Config) getConfigPathFromFlag() string {
 	args := os.Args[1:]
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		switch args[i] {
 		case "-c", "-config":
 			if i+1 < len(args) {
