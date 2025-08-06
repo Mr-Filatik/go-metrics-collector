@@ -26,18 +26,3 @@ func TestGetLevelName(t *testing.T) {
 		})
 	}
 }
-
-type compileMock struct{}
-
-func (m *compileMock) Log(level LogLevel, message string, keysAndValues ...interface{}) {}
-func (m *compileMock) Debug(message string, keysAndValues ...interface{})               {}
-func (m *compileMock) Info(message string, keysAndValues ...interface{})                {}
-func (m *compileMock) Error(message string, err error, keysAndValues ...interface{})    {}
-func (m *compileMock) Close()                                                           {}
-
-func TestLoggerInterface(t *testing.T) {
-	var logger Logger = &compileMock{}
-	if logger == nil {
-		t.Fatal("mock не должен быть nil")
-	}
-}

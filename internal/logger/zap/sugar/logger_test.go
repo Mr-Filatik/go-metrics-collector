@@ -22,26 +22,6 @@ func captureLogs(level zapcore.Level) (*ZapSugarLogger, *observer.ObservedLogs) 
 	return l, recorded
 }
 
-// func TestNew(t *testing.T) {
-// 	// Перехватываем stdout
-// 	backup := zap.L()
-// 	defer func() { zap.L().Sync(); zap.ReplaceGlobals(backup) }()
-
-// 	var buf bytes.Buffer
-// 	loggerCfg := zap.NewDevelopmentConfig()
-// 	loggerCfg.OutputPaths = []string{"/tmp/stdout", buf.String()}
-// 	loggerCfg.ErrorOutputPaths = []string{"/tmp/stderr"}
-
-// 	zslog := New(logger.LevelInfo)
-
-// 	require.NotNil(t, zslog)
-// 	assert.Equal(t, logger.LevelInfo, zslog.minLogLevel)
-
-// 	logOutput := buf.String()
-// 	assert.Contains(t, logOutput, "Create logger")  // dont work
-// 	assert.Contains(t, logOutput, "level\":\"info") // dont work
-// }
-
 func TestLog_LevelFilter(t *testing.T) {
 	log, observed := captureLogs(zapcore.InfoLevel)
 	log.minLogLevel = logger.LevelInfo
