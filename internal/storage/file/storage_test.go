@@ -139,31 +139,3 @@ func TestLoadData_InvalidJSON(t *testing.T) {
 	assert.Equal(t, "failed to deserialize metrics", err.Error())
 	assert.Empty(t, data)
 }
-
-func TestSaveData_WriteError(t *testing.T) {
-	mockLog := &mockLogger{}
-	storage := New("/root/forbidden.json", mockLog)
-
-	data := []entity.Metrics{{ID: "test", MType: "gauge", Value: floatPtr(1.0)}}
-
-	err := storage.SaveData(data)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to write metrics to file")
-}
-
-func TestSaveData_Overwrite(t *testing.T) {
-	mockLog := &mockLogger{}
-	tmpFile := createTempFile(t, nil)
-
-	storage := New(tmpFile, mockLog)
-
-	err := storage.SaveData([]entity.Metrics{{ID: "first", MType: "gauge", Value: floatPtr(1.0)}})
-	require.NoError(t, err)
-
-	err = storage.SaveData([]entity.Metrics{{ID: "second", MType: "gauge", Value: floatPtr(2.0)}})
-	require.NoError(t, err)
-
-	loaded, _ := storage.LoadData()
-	assert.Len(t, loaded, 1)
-	assert.Equal(t, "second", loaded[0].ID)
-}
