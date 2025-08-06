@@ -3,9 +3,11 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Костанты - значения по умолчанию.
@@ -20,12 +22,18 @@ const (
 
 // Config - структура, содержащая основные параметры приложения.
 type Config struct {
-	ServerAddress  string // адрес сервера
-	HashKey        string // ключ хэширования
-	CryptoKeyPath  string // путь до публичного ключа
-	PollInterval   int64  // интервал опроса (в секундах)
-	ReportInterval int64  // интервал отправки данных (в секундах)
-	RateLimit      int64  // лимит запросов для агента
+	// Aдрес сервера
+	ServerAddress string `json:"server_address"`
+	// Ключ хэширования
+	HashKey string `json:"-"`
+	// Путь до публичного ключа
+	CryptoKeyPath string `json:"crypto_key"`
+	// Интервал опроса (в секундах)
+	PollInterval int64 `json:"poll_interval"`
+	// Интервал отправки данных (в секундах)
+	ReportInterval int64 `json:"report_interval"`
+	// Лимит запросов для агента
+	RateLimit int64 `json:"-"`
 }
 
 // Initialize создаёт и иницализирует объект *Config.
@@ -43,10 +51,58 @@ func Initialize() *Config {
 		RateLimit:      defaultRateLimit,
 	}
 
+	path := config.getConfigPathFromFlag()
+	if newPath := config.getConfigPathFromEnvironment(); newPath != "" {
+		path = newPath
+	}
+
+	if path != "" {
+		config.loadFromJSON(path)
+	}
+
 	config.getFlags()
 	config.getEnvironments()
 
 	return &config
+}
+
+func (c *Config) loadFromJSON(path string) {
+	if path == "" {
+		return // файл не указан
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+
+	var fileConfig Config
+	if err := json.Unmarshal(data, &fileConfig); err != nil {
+		return
+	}
+
+	if fileConfig.ServerAddress != "" {
+		c.ServerAddress = "http://" + stripHTTPPrefix(fileConfig.ServerAddress)
+	}
+	if fileConfig.CryptoKeyPath != "" {
+		c.CryptoKeyPath = fileConfig.CryptoKeyPath
+	}
+	if fileConfig.PollInterval != 0 {
+		c.PollInterval = fileConfig.PollInterval
+	}
+	if fileConfig.ReportInterval != 0 {
+		c.ReportInterval = fileConfig.ReportInterval
+	}
+}
+
+func stripHTTPPrefix(addr string) string {
+	if strings.HasPrefix(addr, "http://") {
+		return addr[7:]
+	}
+	if strings.HasPrefix(addr, "https://") {
+		return addr[8:]
+	}
+	return addr
 }
 
 func (c *Config) getFlags() {
@@ -77,6 +133,20 @@ func (c *Config) getFlags() {
 	if argLimitValue != nil && *argLimitValue != 0 {
 		c.RateLimit = *argLimitValue
 	}
+}
+
+func (c *Config) getConfigPathFromFlag() string {
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-c", "-config":
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+		}
+	}
+
+	return ""
 }
 
 func (c *Config) getEnvironments() {
@@ -115,4 +185,12 @@ func (c *Config) getEnvironments() {
 			c.RateLimit = val
 		}
 	}
+}
+
+func (c *Config) getConfigPathFromEnvironment() string {
+	envConfigValue, ok := os.LookupEnv("CONFIG")
+	if ok && envConfigValue != "" {
+		return envConfigValue
+	}
+	return ""
 }

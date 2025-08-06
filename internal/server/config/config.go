@@ -3,6 +3,7 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"strconv"
@@ -22,13 +23,20 @@ const (
 
 // Config - структура, содержащая основные параметры приложения.
 type Config struct {
-	ServerAddress    string // адрес сервера
-	HashKey          string // ключ хэширования
-	CryptoKeyPath    string // путь до приватного ключа
-	FileStoragePath  string // интервал сохранения данных в хранилище (в секундах)
-	ConnectionString string // путь до файла хранилища (относительный)
-	StoreInterval    int64  // флаг, указывающий загружать ли данные из хранилища при старте приложения
-	Restore          bool   // строка подключения к базе данных
+	// Адрес сервера
+	ServerAddress string `json:"server_address"`
+	// Ключ хэширования
+	HashKey string `json:"-"`
+	// Путь до приватного ключа
+	CryptoKeyPath string `json:"crypto_key"`
+	// Путь до файла хранилища (относительный)
+	FileStoragePath string `json:"store_file"`
+	// Строка подключения к базе данных
+	ConnectionString string `json:"database_dsn"`
+	// Интервал сохранения данных в хранилище (в секундах)
+	StoreInterval int64 `json:"store_interval"`
+	// Флаг, указывающий загружать ли данные из хранилища при старте приложения
+	Restore bool `json:"restore"`
 }
 
 // Initialize создаёт и иницализирует объект *Config.
@@ -47,10 +55,52 @@ func Initialize() *Config {
 		ConnectionString: defaultConnectionString,
 	}
 
+	path := config.getConfigPathFromFlag()
+	if newPath := config.getConfigPathFromEnvironment(); newPath != "" {
+		path = newPath
+	}
+
+	if path != "" {
+		config.loadFromJSON(path)
+	}
+
 	config.getFlags()
 	config.getEnvironments()
 
 	return &config
+}
+
+func (c *Config) loadFromJSON(path string) {
+	if path == "" {
+		return // файл не указан
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+
+	var fileConfig Config
+	if err := json.Unmarshal(data, &fileConfig); err != nil {
+		return
+	}
+
+	if fileConfig.ServerAddress != "" {
+		c.ServerAddress = fileConfig.ServerAddress
+	}
+	if fileConfig.CryptoKeyPath != "" {
+		c.CryptoKeyPath = fileConfig.CryptoKeyPath
+	}
+	if fileConfig.ConnectionString != "" {
+		c.ConnectionString = fileConfig.ConnectionString
+	}
+	if fileConfig.FileStoragePath != "" {
+		c.FileStoragePath = fileConfig.FileStoragePath
+	}
+	if fileConfig.StoreInterval != 0 {
+		c.StoreInterval = fileConfig.StoreInterval
+	}
+	c.Restore = fileConfig.Restore
 }
 
 func (c *Config) getFlags() {
@@ -85,6 +135,20 @@ func (c *Config) getFlags() {
 	if argConnStr != nil && *argConnStr != "" {
 		c.ConnectionString = *argConnStr
 	}
+}
+
+func (c *Config) getConfigPathFromFlag() string {
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-c", "-config":
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+		}
+	}
+
+	return ""
 }
 
 func (c *Config) getEnvironments() {
@@ -126,4 +190,12 @@ func (c *Config) getEnvironments() {
 	if ok && envConnStrValue != "" {
 		c.ConnectionString = envConnStrValue
 	}
+}
+
+func (c *Config) getConfigPathFromEnvironment() string {
+	envConfigValue, ok := os.LookupEnv("CONFIG")
+	if ok && envConfigValue != "" {
+		return envConfigValue
+	}
+	return ""
 }
