@@ -3,10 +3,6 @@
 package config
 
 import (
-	"encoding/json"
-	"flag"
-	"os"
-	"strconv"
 	"strings"
 )
 
@@ -22,23 +18,18 @@ const (
 
 // Config - структура, содержащая основные параметры приложения.
 type Config struct {
-	// Aдрес сервера
-	ServerAddress string `json:"server_address"`
-	// Ключ хэширования
-	HashKey string `json:"-"`
-	// Путь до публичного ключа
-	CryptoKeyPath string `json:"crypto_key"`
-	// Интервал опроса (в секундах)
-	PollInterval int64 `json:"poll_interval"`
-	// Интервал отправки данных (в секундах)
-	ReportInterval int64 `json:"report_interval"`
-	// Лимит запросов для агента
-	RateLimit int64 `json:"-"`
+	ServerAddress  string // Aдрес сервера
+	HashKey        string // Ключ хэширования
+	CryptoKeyPath  string // Путь до публичного ключа
+	PollInterval   int64  // Интервал опроса (в секундах)
+	ReportInterval int64  // Интервал отправки данных (в секундах)
+	RateLimit      int64  // Лимит запросов для агента
 }
 
 // Initialize создаёт и иницализирует объект *Config.
 // Значения присваиваются в следующем порядке (переприсваивают):
 //   - значения по умолчания;
+//   - значения из файла конфигурации;
 //   - значения из флагов командной строки;
 //   - значения из переменных окружения.
 func Initialize() *Config {
@@ -51,48 +42,26 @@ func Initialize() *Config {
 		RateLimit:      defaultRateLimit,
 	}
 
-	path := config.getConfigPathFromFlag()
-	if newPath := config.getConfigPathFromEnvironment(); newPath != "" {
-		path = newPath
+	envsConf := initializeEnvs()
+	flagsConf := initializeFlags()
+
+	var path string
+	if flagsConf.configPathIsValue {
+		path = flagsConf.configPath
+	}
+	if envsConf.configPathIsValue {
+		path = envsConf.configPath
 	}
 
-	if path != "" {
-		config.loadFromJSON(path)
-	}
+	fileConf, _ := initializeJSONs(path) // игнорируем ошибку, т.к. есть дефолтные значения
 
-	config.getFlags()
-	config.getEnvironments()
+	config.overrideConfigFromJSONs(fileConf)
+	config.overrideConfigFromFlags(flagsConf)
+	config.overrideConfigFromEnvs(envsConf)
+
+	config.ServerAddress = "http://" + stripHTTPPrefix(config.ServerAddress)
 
 	return &config
-}
-
-func (c *Config) loadFromJSON(path string) {
-	if path == "" {
-		return // файл не указан
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-
-	var fileConfig Config
-	if err := json.Unmarshal(data, &fileConfig); err != nil {
-		return
-	}
-
-	if fileConfig.ServerAddress != "" {
-		c.ServerAddress = "http://" + stripHTTPPrefix(fileConfig.ServerAddress)
-	}
-	if fileConfig.CryptoKeyPath != "" {
-		c.CryptoKeyPath = fileConfig.CryptoKeyPath
-	}
-	if fileConfig.PollInterval != 0 {
-		c.PollInterval = fileConfig.PollInterval
-	}
-	if fileConfig.ReportInterval != 0 {
-		c.ReportInterval = fileConfig.ReportInterval
-	}
 }
 
 func stripHTTPPrefix(addr string) string {
@@ -103,94 +72,4 @@ func stripHTTPPrefix(addr string) string {
 		return addr[8:]
 	}
 	return addr
-}
-
-func (c *Config) getFlags() {
-	argEndpValue := flag.String("a", defaultServerAddress, "HTTP server endpoint")
-	argKeyValue := flag.String("k", defaultHashKey, "Hash key")
-	argCryptoValue := flag.String("crypto-key", defaultCryptoKeyPath, "Public crypto key path")
-	argRepValue := flag.Int64("r", defaultReportInterval, "Report interval")
-	argPollValue := flag.Int64("p", defaultPollInterval, "Poll interval")
-	argLimitValue := flag.Int64("l", defaultPollInterval, "Rate limit")
-
-	flag.Parse()
-
-	if argEndpValue != nil && *argEndpValue != "" {
-		c.ServerAddress = "http://" + *argEndpValue
-	}
-	if argKeyValue != nil && *argKeyValue != "" {
-		c.HashKey = *argKeyValue
-	}
-	if argCryptoValue != nil && *argCryptoValue != "" {
-		c.CryptoKeyPath = *argCryptoValue
-	}
-	if argRepValue != nil && *argRepValue != 0 {
-		c.ReportInterval = *argRepValue
-	}
-	if argPollValue != nil && *argPollValue != 0 {
-		c.PollInterval = *argPollValue
-	}
-	if argLimitValue != nil && *argLimitValue != 0 {
-		c.RateLimit = *argLimitValue
-	}
-}
-
-func (c *Config) getConfigPathFromFlag() string {
-	args := os.Args[1:]
-	for i := range args {
-		switch args[i] {
-		case "-c", "-config":
-			if i+1 < len(args) {
-				return args[i+1]
-			}
-		}
-	}
-
-	return ""
-}
-
-func (c *Config) getEnvironments() {
-	envEndpValue, ok := os.LookupEnv("ADDRESS")
-	if ok && envEndpValue != "" {
-		c.ServerAddress = "http://" + envEndpValue
-	}
-
-	envKeyValue, ok := os.LookupEnv("KEY")
-	if ok && envKeyValue != "" {
-		c.HashKey = envKeyValue
-	}
-
-	envCryptoValue, ok := os.LookupEnv("CRYPTO_KEY")
-	if ok && envCryptoValue != "" {
-		c.CryptoKeyPath = envCryptoValue
-	}
-
-	envRepValue, ok := os.LookupEnv("REPORT_INTERVAL")
-	if ok && envRepValue != "" {
-		if val, err := strconv.ParseInt(envRepValue, 10, 64); err == nil {
-			c.ReportInterval = val
-		}
-	}
-
-	envPollValue, ok := os.LookupEnv("POLL_INTERVAL")
-	if ok && envPollValue != "" {
-		if val, err := strconv.ParseInt(envPollValue, 10, 64); err == nil {
-			c.PollInterval = val
-		}
-	}
-
-	envLimitValue, ok := os.LookupEnv("RATE_LIMIT")
-	if ok && envLimitValue != "" {
-		if val, err := strconv.ParseInt(envLimitValue, 10, 64); err == nil {
-			c.RateLimit = val
-		}
-	}
-}
-
-func (c *Config) getConfigPathFromEnvironment() string {
-	envConfigValue, ok := os.LookupEnv("CONFIG")
-	if ok && envConfigValue != "" {
-		return envConfigValue
-	}
-	return ""
 }
