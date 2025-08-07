@@ -16,6 +16,7 @@ import (
 )
 
 func generateTestKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
+	t.Helper()
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	return privateKey, &privateKey.PublicKey
