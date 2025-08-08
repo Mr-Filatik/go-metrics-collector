@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
@@ -54,7 +55,8 @@ func TestNew(t *testing.T) {
 
 func TestPing(t *testing.T) {
 	repo := &MemoryRepository{}
-	err := repo.Ping()
+	ctx := context.Background()
+	err := repo.Ping(ctx)
 	assert.NoError(t, err)
 }
 
@@ -63,8 +65,9 @@ func TestGetAll_Empty(t *testing.T) {
 		datas: make([]entity.Metrics, 0),
 		log:   &mockLogger{},
 	}
+	ctx := context.Background()
 
-	result, err := repo.GetAll()
+	result, err := repo.GetAll(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, result)
 }
@@ -74,6 +77,7 @@ func TestGetAll_WithData(t *testing.T) {
 		{ID: "metric1", MType: "gauge", Value: floatPtr(1.5)},
 		{ID: "metric2", MType: "counter", Delta: intPtr(10)},
 	}
+	ctx := context.Background()
 
 	mockLog := &mockLogger{}
 	repo := &MemoryRepository{
@@ -81,7 +85,7 @@ func TestGetAll_WithData(t *testing.T) {
 		log:   mockLog,
 	}
 
-	result, err := repo.GetAll()
+	result, err := repo.GetAll(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
 	assert.Equal(t, testData, result)
@@ -92,6 +96,7 @@ func TestGetByID_Found(t *testing.T) {
 	testData := []entity.Metrics{
 		{ID: "metric1", MType: "gauge", Value: floatPtr(1.5)},
 	}
+	ctx := context.Background()
 
 	mockLog := &mockLogger{}
 	repo := &MemoryRepository{
@@ -99,7 +104,7 @@ func TestGetByID_Found(t *testing.T) {
 		log:   mockLog,
 	}
 
-	result, err := repo.GetByID("metric1")
+	result, err := repo.GetByID(ctx, "metric1")
 	assert.NoError(t, err)
 	assert.Equal(t, "metric1", result.ID)
 	assert.Equal(t, "gauge", result.MType)
@@ -112,8 +117,9 @@ func TestGetByID_NotFound(t *testing.T) {
 		datas: []entity.Metrics{},
 		log:   &mockLogger{},
 	}
+	ctx := context.Background()
 
-	result, err := repo.GetByID("unknown")
+	result, err := repo.GetByID(ctx, "unknown")
 	assert.Error(t, err)
 	assert.Equal(t, entity.Metrics{}, result)
 	assert.Equal(t, err.Error(), repository.ErrorMetricNotFound)
@@ -125,6 +131,7 @@ func TestCreate(t *testing.T) {
 		datas: make([]entity.Metrics, 0),
 		log:   mockLog,
 	}
+	ctx := context.Background()
 
 	newMetric := entity.Metrics{
 		ID:    "new_metric",
@@ -132,7 +139,7 @@ func TestCreate(t *testing.T) {
 		Delta: intPtr(5),
 	}
 
-	id, err := repo.Create(newMetric)
+	id, err := repo.Create(ctx, newMetric)
 	assert.NoError(t, err)
 	assert.Equal(t, "new_metric", id)
 	assert.Len(t, repo.datas, 1)
@@ -157,7 +164,8 @@ func TestUpdate_Existing(t *testing.T) {
 		Value: floatPtr(2.5),
 	}
 
-	value, delta, err := repo.Update(updated)
+	ctx := context.Background()
+	value, delta, err := repo.Update(ctx, updated)
 	assert.NoError(t, err)
 	assert.Equal(t, 2.5, value)
 	assert.Equal(t, int64(0), delta)
@@ -171,9 +179,10 @@ func TestUpdate_NotFound(t *testing.T) {
 		datas: []entity.Metrics{},
 		log:   &mockLogger{},
 	}
+	ctx := context.Background()
 
 	metric := entity.Metrics{ID: "unknown", MType: "gauge", Value: floatPtr(1.0)}
-	value, delta, err := repo.Update(metric)
+	value, delta, err := repo.Update(ctx, metric)
 
 	assert.Error(t, err)
 	assert.Equal(t, 0.0, value)
@@ -190,7 +199,8 @@ func TestRemove(t *testing.T) {
 		log: &mockLogger{},
 	}
 
-	deletedID, err := repo.Remove(entity.Metrics{ID: "metric1"})
+	ctx := context.Background()
+	deletedID, err := repo.Remove(ctx, entity.Metrics{ID: "metric1"})
 	assert.NoError(t, err)
 	assert.Equal(t, "metric1", deletedID)
 	assert.Len(t, repo.datas, 1)
@@ -205,7 +215,8 @@ func TestRemove_NonExistent(t *testing.T) {
 		log: &mockLogger{},
 	}
 
-	deletedID, err := repo.Remove(entity.Metrics{ID: "unknown"})
+	ctx := context.Background()
+	deletedID, err := repo.Remove(ctx, entity.Metrics{ID: "unknown"})
 	assert.Error(t, err)
 	assert.Equal(t, "", deletedID)
 	assert.Len(t, repo.datas, 1)

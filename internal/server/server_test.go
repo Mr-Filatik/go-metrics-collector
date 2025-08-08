@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -110,6 +111,64 @@ func TestGetMetric(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			serv.GetMetric(w, req)
+
+			require.Equal(t, tt.expectedStatus, w.Code)
+			require.Equal(t, tt.expectedBody, w.Body.String())
+		})
+	}
+}
+
+func TestGetMetricJSON(t *testing.T) {
+	tests := []struct {
+		name               string
+		method             string
+		path               string
+		parameters         string
+		mockCreateOrUpdate func(t string, n, v string) error
+		expectedStatus     int
+		expectedBody       string
+	}{
+		{
+			name:           "Invalid metric type",
+			method:         http.MethodPost,
+			path:           "/value/",
+			parameters:     "{\"type\": \"abracadabra\", \"name\": \"testAbracadabra\"}",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Error: incorrect metric type\n",
+		},
+		{
+			name:           "Invalid metric name for gauge type",
+			method:         http.MethodPost,
+			path:           "/value/",
+			parameters:     "{\"type\": \"gauge\", \"name\": \"testGauge\"}",
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "Error: metric not found\n",
+		},
+		{
+			name:           "Invalid metric name for counter type",
+			method:         http.MethodPost,
+			path:           "/value/",
+			parameters:     "{\"type\": \"counter\", \"name\": \"testCounter\"}",
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "Error: metric not found\n",
+		},
+	}
+
+	log := logger.New(logger.LevelInfo)
+	repo := repository.New("", log)
+	// stor := storage.New("", log)
+	stor := service.New(repo, nil, 0, log)
+	serv := &Server{
+		service: stor,
+		log:     log,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, bytes.NewBufferString(tt.parameters))
+			w := httptest.NewRecorder()
+
+			serv.GetMetricJSON(w, req)
 
 			require.Equal(t, tt.expectedStatus, w.Code)
 			require.Equal(t, tt.expectedBody, w.Body.String())
