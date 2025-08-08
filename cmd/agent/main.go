@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
+	"os/signal"
+	"syscall"
 
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/agent/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
@@ -42,9 +44,18 @@ func main() {
 		key = k
 	}
 
-	go updater.Run(metrics, conf.PollInterval)
-	go updater.RunMemory(metrics, conf.PollInterval)
+	// Привязка сигналов ОС к контексту
+	exitCtx, exitFn := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	defer exitFn()
+
+	go updater.Run(exitCtx, metrics, conf.PollInterval)
+	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
+		exitCtx,
 		metrics,
 		conf.ServerAddress,
 		conf.ReportInterval,
@@ -53,8 +64,9 @@ func main() {
 		key,
 		log)
 
-	err := http.ListenAndServe("localhost:8081", nil)
-	if err != nil {
-		log.Error("Server error", err)
-	}
+	// Ожидание сигнала остановки
+	<-exitCtx.Done()
+	exitFn()
+
+	log.Info("Finish agent shutdown")
 }
