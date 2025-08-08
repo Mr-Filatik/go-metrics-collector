@@ -96,6 +96,8 @@ func (l *ZapSugarLogger) Error(message string, err error, keysAndValues ...inter
 // Close освобождает все используемые логгером ресурсы.
 func (l *ZapSugarLogger) Close() {
 	if err := l.logger.Sync(); err != nil {
-		panic(err)
+		// На Windows есть ошибка при вызове Sync, поэтому игнорирую ошибку.
+		// Все ресурсы должны освободиться в любом случае.
+		_ = err
 	}
 }

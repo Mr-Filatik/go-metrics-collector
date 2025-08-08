@@ -3,6 +3,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
@@ -33,12 +34,12 @@ func New(dbConn string, l logger.Logger) *MemoryRepository {
 }
 
 // Ping проверяет доступность и готовность репозитория.
-func (r *MemoryRepository) Ping() error {
+func (r *MemoryRepository) Ping(ctx context.Context) error {
 	return nil
 }
 
 // GetAll возвращает все хранящиеся метрики или ошибку.
-func (r *MemoryRepository) GetAll() ([]entity.Metrics, error) {
+func (r *MemoryRepository) GetAll(ctx context.Context) ([]entity.Metrics, error) {
 	if r.datas != nil {
 		r.log.Debug(
 			"Query all metrics from MemRepository",
@@ -54,7 +55,7 @@ func (r *MemoryRepository) GetAll() ([]entity.Metrics, error) {
 //
 // Параметры:
 //   - id: идентификатор метрики
-func (r *MemoryRepository) GetByID(id string) (entity.Metrics, error) {
+func (r *MemoryRepository) GetByID(ctx context.Context, id string) (entity.Metrics, error) {
 	for _, v := range r.datas {
 		if v.ID == id {
 			r.log.Debug(
@@ -80,7 +81,7 @@ func (r *MemoryRepository) GetByID(id string) (entity.Metrics, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *MemoryRepository) Create(e entity.Metrics) (string, error) {
+func (r *MemoryRepository) Create(ctx context.Context, e entity.Metrics) (string, error) {
 	r.datas = append(r.datas, e)
 
 	r.log.Debug(
@@ -98,7 +99,7 @@ func (r *MemoryRepository) Create(e entity.Metrics) (string, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
+func (r *MemoryRepository) Update(ctx context.Context, e entity.Metrics) (float64, int64, error) {
 	for i, v := range r.datas {
 		if v.ID == e.ID {
 			item := &r.datas[i]
@@ -132,7 +133,7 @@ func (r *MemoryRepository) Update(e entity.Metrics) (float64, int64, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *MemoryRepository) Remove(e entity.Metrics) (string, error) {
+func (r *MemoryRepository) Remove(ctx context.Context, e entity.Metrics) (string, error) {
 	for i, v := range r.datas {
 		if v.ID == e.ID {
 			r.log.Debug("Deleting a metric in MemRepository", "id", e.ID)

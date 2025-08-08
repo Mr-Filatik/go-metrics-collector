@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
+	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
@@ -21,6 +27,10 @@ var (
 	buildCommit  string = "N/A"
 )
 
+const (
+	shutdownTimeout = 5 * time.Second
+)
+
 func main() {
 	log := logger.New(logger.LevelDebug)
 	defer log.Close()
@@ -30,6 +40,15 @@ func main() {
 	log.Info(fmt.Sprintf("Build commit: %v", buildCommit))
 
 	conf := config.Initialize()
+
+	var key *rsa.PrivateKey = nil
+	if conf.CryptoKeyPath != "" {
+		k, err := crypto.LoadPrivateKey(conf.CryptoKeyPath)
+		if err != nil {
+			log.Error("Load private key error", err)
+		}
+		key = k
+	}
 
 	var srvc *service.Service
 	if conf.ConnectionString != "" {
@@ -44,17 +63,50 @@ func main() {
 		stor := storage.New(conf.FileStoragePath, log)
 		srvc = service.New(repo, stor, conf.StoreInterval, log)
 	}
+	srvc.Start(conf.Restore)
+	defer srvc.Stop()
 
-	var key *rsa.PrivateKey = nil
-	if conf.CryptoKeyPath != "" {
-		k, err := crypto.LoadPrivateKey(conf.CryptoKeyPath)
-		if err != nil {
-			log.Error("Load private key error", err)
-			return
+	// Привязка сигналов ОС к контексту
+	exitCtx, exitFn := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	defer exitFn()
+
+	// Запуск сервера
+	serv := server.NewServer(exitCtx, conf.ServerAddress, srvc, conf.HashKey, key, log)
+	go func() {
+		log.Info(
+			"Start server",
+			"endpoint", conf.ServerAddress,
+		)
+		if err := serv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("Error server", err)
 		}
-		key = k
+		log.Info(
+			"Finish server",
+			"endpoint", conf.ServerAddress,
+		)
+	}()
+
+	// Ожидание сигнала остановки
+	<-exitCtx.Done()
+	exitFn()
+
+	// Запускаем полноценную остановку с таймаутом
+	log.Info("Start server shutdown")
+	shutdownCtx, cansel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cansel()
+
+	err := serv.Shutdown(shutdownCtx)
+	if err != nil {
+		log.Error("Shutdown server error", err)
+		cErr := serv.Close()
+		if cErr != nil {
+			log.Error("Close server error", cErr)
+		}
 	}
 
-	serv := server.NewServer(srvc, conf.HashKey, key, log)
-	serv.Start(conf.ServerAddress, conf.Restore)
+	log.Info("Finish server shutdown")
 }

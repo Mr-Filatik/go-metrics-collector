@@ -91,8 +91,8 @@ func New(dbConn string, l logger.Logger) (*PostgresRepository, error) {
 }
 
 // Ping проверяет доступность и готовность репозитория.
-func (r *PostgresRepository) Ping() error {
-	err := r.conn.Ping(context.Background())
+func (r *PostgresRepository) Ping(ctx context.Context) error {
+	err := r.conn.Ping(ctx)
 	if err != nil {
 		r.log.Error("Error during ping", err)
 		return ErrQueryRun
@@ -103,8 +103,8 @@ func (r *PostgresRepository) Ping() error {
 }
 
 // GetAll возвращает все хранящиеся метрики или ошибку.
-func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
-	rows, err := r.conn.Query(context.Background(),
+func (r *PostgresRepository) GetAll(ctx context.Context) ([]entity.Metrics, error) {
+	rows, err := r.conn.Query(ctx,
 		"SELECT id, mtype, value, delta FROM metrics")
 	if err != nil {
 		r.log.Error("Error during query execution", err)
@@ -138,9 +138,9 @@ func (r *PostgresRepository) GetAll() ([]entity.Metrics, error) {
 //
 // Параметры:
 //   - id: идентификатор метрики
-func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
+func (r *PostgresRepository) GetByID(ctx context.Context, id string) (entity.Metrics, error) {
 	var m entity.Metrics
-	err := r.conn.QueryRow(context.Background(),
+	err := r.conn.QueryRow(ctx,
 		"SELECT id, mtype, value, delta FROM metrics WHERE id = $1", id).Scan(&m.ID, &m.MType, &m.Value, &m.Delta)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -165,8 +165,8 @@ func (r *PostgresRepository) GetByID(id string) (entity.Metrics, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
-	_, err := r.conn.Exec(context.Background(),
+func (r *PostgresRepository) Create(ctx context.Context, e entity.Metrics) (string, error) {
+	_, err := r.conn.Exec(ctx,
 		"INSERT INTO metrics (id, mtype, value, delta) VALUES ($1, $2, $3, $4)", e.ID, e.MType, e.Value, e.Delta)
 	if err != nil {
 		r.log.Error("Error during insert execution", err)
@@ -187,8 +187,8 @@ func (r *PostgresRepository) Create(e entity.Metrics) (string, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
-	_, err := r.conn.Exec(context.Background(),
+func (r *PostgresRepository) Update(ctx context.Context, e entity.Metrics) (float64, int64, error) {
+	_, err := r.conn.Exec(ctx,
 		"UPDATE metrics SET mtype = $1, value = $2, delta = $3 WHERE id = $4", e.MType, e.Value, e.Delta, e.ID)
 	if err != nil {
 		r.log.Error("Error during update execution", err)
@@ -217,8 +217,8 @@ func (r *PostgresRepository) Update(e entity.Metrics) (float64, int64, error) {
 //
 // Параметры:
 //   - e: метрика
-func (r *PostgresRepository) Remove(e entity.Metrics) (string, error) {
-	_, err := r.conn.Exec(context.Background(), "DELETE FROM metrics WHERE id = $1", e.ID)
+func (r *PostgresRepository) Remove(ctx context.Context, e entity.Metrics) (string, error) {
+	_, err := r.conn.Exec(ctx, "DELETE FROM metrics WHERE id = $1", e.ID)
 	if err != nil {
 		r.log.Error("Error during delete execution", err)
 		return "", errors.New("delete error")
