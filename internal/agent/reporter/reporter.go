@@ -70,7 +70,7 @@ func Run(
 			select {
 			case jobs <- struct{}{}:
 			default:
-				//log.Warn("Job queue full, skipping report", "queue_size", lim)
+				// log.Warn("Job queue full, skipping report", "queue_size", lim)
 			}
 		}
 	}
@@ -242,7 +242,11 @@ func worker(
 						SetHeader(AcceptEncodingHeader, EncodingType).
 						SetBody(dat).
 						Post(address)
-					return resp, err
+
+					if err != nil {
+						return resp, errors.New(err.Error())
+					}
+					return resp, nil
 				}).
 				Run(dat)
 
