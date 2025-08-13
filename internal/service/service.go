@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -51,13 +52,14 @@ func New(r repository.Repository, s storage.Storage, strInterval int64, l logger
 // Параметры:
 //   - restoreData: флаг, указывающий загружать ли данные при старте
 func (s *Service) Start(restoreData bool) {
+	ctx := context.Background()
 	if s.storage != nil && restoreData {
 		data, serr := s.storage.LoadData()
 		if serr != nil {
 			s.log.Error("Load data from storage error", serr)
 		}
 		for _, val := range data {
-			_, err := s.CreateOrUpdate(val)
+			_, err := s.CreateOrUpdate(ctx, val)
 			if err != nil {
 				s.log.Error("Set data to repository error", err)
 			}
@@ -69,21 +71,21 @@ func (s *Service) Start(restoreData bool) {
 	}
 
 	if s.storage != nil && s.storSaveInterval != 0 {
-		go s.autoSaveDataWithInterval(s.storSaveInterval)
+		go s.autoSaveDataWithInterval(ctx, s.storSaveInterval)
 	}
 }
 
 // Stop останавливает основную логику приложения.
 func (s *Service) Stop() {
-	err := s.saveDataWithoutInterval()
+	err := s.saveDataWithoutInterval(context.Background())
 	if err != nil {
 		s.log.Error("Stop service error", err)
 	}
 }
 
 // Ping проверяет доступность логики.
-func (s *Service) Ping() error {
-	err := s.repository.Ping()
+func (s *Service) Ping(ctx context.Context) error {
+	err := s.repository.Ping(ctx)
 	if err != nil {
 		return errors.New(err.Error())
 	}
@@ -91,8 +93,8 @@ func (s *Service) Ping() error {
 }
 
 // GetAll возвращает все хранящиеся метрики.
-func (s *Service) GetAll() ([]entity.Metrics, error) {
-	vals, err := s.repository.GetAll()
+func (s *Service) GetAll(ctx context.Context) ([]entity.Metrics, error) {
+	vals, err := s.repository.GetAll(ctx)
 	if err != nil {
 		return make([]entity.Metrics, 0), errors.New(err.Error())
 	}
@@ -104,8 +106,8 @@ func (s *Service) GetAll() ([]entity.Metrics, error) {
 // Параметры:
 //   - id: идентификатор метрики
 //   - t: тип метрики
-func (s *Service) Get(id string, t string) (entity.Metrics, error) {
-	m, err := s.repository.GetByID(id)
+func (s *Service) Get(ctx context.Context, id string, t string) (entity.Metrics, error) {
+	m, err := s.repository.GetByID(ctx, id)
 	if err != nil {
 		s.reportStorageError(err.Error(), "")
 		return entity.Metrics{}, errors.New(err.Error())
@@ -123,10 +125,10 @@ func (s *Service) Get(id string, t string) (entity.Metrics, error) {
 //
 // Параметры:
 //   - e: метрика
-func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
-	m, err := s.repository.GetByID(e.ID)
+func (s *Service) CreateOrUpdate(ctx context.Context, e entity.Metrics) (entity.Metrics, error) {
+	m, err := s.repository.GetByID(ctx, e.ID)
 	if err != nil {
-		_, iErr := s.repository.Create(e)
+		_, iErr := s.repository.Create(ctx, e)
 		if iErr != nil {
 			s.reportStorageError(iErr.Error(), "")
 			return entity.Metrics{}, errors.New(UnexpectedMetricCreate)
@@ -139,14 +141,14 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 			return entity.Metrics{}, errors.New(MetricUncorrect)
 		}
 		if e.MType == entity.Gauge {
-			ival, idel, iErr := s.repository.Update(e)
+			ival, idel, iErr := s.repository.Update(ctx, e)
 			if iErr != nil {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
 
 			if s.storage != nil && s.storSaveInterval == 0 {
-				err := s.saveDataWithoutInterval()
+				err := s.saveDataWithoutInterval(ctx)
 				if err != nil {
 					return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 				}
@@ -160,14 +162,14 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 		if e.MType == entity.Counter {
 			val := *m.Delta + *e.Delta
 			e.Delta = &val
-			ival, idel, iErr := s.repository.Update(e)
+			ival, idel, iErr := s.repository.Update(ctx, e)
 			if iErr != nil {
 				s.reportStorageError(iErr.Error(), "")
 				return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 			}
 
 			if s.storage != nil && s.storSaveInterval == 0 {
-				err := s.saveDataWithoutInterval()
+				err := s.saveDataWithoutInterval(ctx)
 				if err != nil {
 					return entity.Metrics{}, errors.New(UnexpectedMetricUpdate)
 				}
@@ -183,11 +185,11 @@ func (s *Service) CreateOrUpdate(e entity.Metrics) (entity.Metrics, error) {
 	}
 }
 
-func (s *Service) autoSaveDataWithInterval(interval int64) {
+func (s *Service) autoSaveDataWithInterval(ctx context.Context, interval int64) {
 	t := time.Tick(time.Duration(interval) * time.Second)
 
 	for range t {
-		data, rerr := s.repository.GetAll()
+		data, rerr := s.repository.GetAll(ctx)
 		if rerr != nil {
 			s.log.Error("Get data from repository error", rerr)
 		}
@@ -204,8 +206,8 @@ func (s *Service) autoSaveDataWithInterval(interval int64) {
 	}
 }
 
-func (s *Service) saveDataWithoutInterval() error {
-	data, rerr := s.repository.GetAll()
+func (s *Service) saveDataWithoutInterval(ctx context.Context) error {
+	data, rerr := s.repository.GetAll(ctx)
 	if rerr != nil {
 		s.log.Error("Save data to storage error", rerr)
 		return errors.New(UnexpectedMetricUpdate)

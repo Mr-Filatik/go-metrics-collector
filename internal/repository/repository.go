@@ -2,7 +2,11 @@
 // которому должнен соотвестовать любой репозиторий проекта.
 package repository
 
-import "github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+import (
+	"context"
+
+	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
+)
 
 // Константы - общие ошибки для репозиториев.
 const (
@@ -10,10 +14,10 @@ const (
 )
 
 type Repository interface {
-	Ping() error
-	GetAll() ([]entity.Metrics, error)
-	GetByID(id string) (entity.Metrics, error)
-	Create(e entity.Metrics) (string, error)
-	Update(e entity.Metrics) (float64, int64, error)
-	Remove(e entity.Metrics) (string, error)
+	Ping(ctx context.Context) error
+	GetAll(ctx context.Context) ([]entity.Metrics, error)
+	GetByID(ctx context.Context, id string) (entity.Metrics, error)
+	Create(ctx context.Context, e entity.Metrics) (string, error)
+	Update(ctx context.Context, e entity.Metrics) (float64, int64, error)
+	Remove(ctx context.Context, e entity.Metrics) (string, error)
 }

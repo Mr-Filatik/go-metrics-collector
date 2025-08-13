@@ -16,7 +16,8 @@ import (
 //
 // Параметры:
 //   - next: следующий обработчик
-func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
+//   - hashKey: ключ хэширования
+func (c *Conveyor) WithHashValidation(next http.Handler, hashKey string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hashFromHeader := r.Header.Get("HashSHA256")
 		c.log.Debug("Hash from header", "hash", hashFromHeader)
@@ -32,7 +33,7 @@ func (c *Conveyor) WithHashValidation(next http.Handler) http.Handler {
 				return
 			}
 
-			h := hmac.New(sha256.New, []byte(c.hashKey))
+			h := hmac.New(sha256.New, []byte(hashKey))
 			h.Write(body)
 			calculatedHash := h.Sum(nil)
 			calculatedHashStr := hex.EncodeToString(calculatedHash)

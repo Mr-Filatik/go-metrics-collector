@@ -5,7 +5,9 @@ package reporter
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/hmac"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
+	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repeater"
@@ -33,30 +36,58 @@ const (
 // Создаёт пул воркеров и посылает сигналы на отправку каждые reportInterval секунд.
 //
 // Параметры:
+//   - ctx: контекст для отмены
 //   - m: объект метрик (AgentMetrics)
 //   - endpoint: адрес сервера, куда отправляются метрики
 //   - reportInterval: интервал отправки метрик (в секундах)
 //   - hashKey: ключ для хэширования метрик
 //   - lim: количество параллельных воркеров
 //   - log: логгер
-func Run(m *metric.AgentMetrics, endpoint string, reportInterval int64, hashKey string, lim int64, log logger.Logger) {
-	jobs := make(chan interface{}, lim)
+func Run(
+	ctx context.Context,
+	m *metric.AgentMetrics,
+	endpoint string,
+	reportInterval int64,
+	hashKey string,
+	lim int64,
+	publicKey *rsa.PublicKey,
+	log logger.Logger) {
+	jobs := make(chan struct{}, lim)
 	defer close(jobs)
 
 	for w := int64(1); w <= lim; w++ {
-		go worker(m, endpoint, hashKey, log, jobs)
+		go worker(ctx, m, endpoint, hashKey, publicKey, log, jobs)
 	}
 
-	t := time.Tick(time.Duration(reportInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+	defer ticker.Stop()
 
-	for range t {
-		jobs <- "run report"
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			select {
+			case jobs <- struct{}{}:
+			default:
+				// log.Warn("Job queue full, skipping report", "queue_size", lim)
+			}
+		}
 	}
 }
 
-func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.Logger, jobs <-chan interface{}) {
+func worker(
+	ctx context.Context,
+	m *metric.AgentMetrics,
+	endpoint string,
+	hashKey string,
+	publicKey *rsa.PublicKey,
+	log logger.Logger,
+	jobs <-chan struct{},
+) {
 	client := resty.New()
 
+	// Middleware: Before Request
 	client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
 		if hashKey != "" {
 			body := r.Body
@@ -103,6 +134,25 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 			}
 		}
 
+		if publicKey != nil {
+			body := r.Body
+			if body != nil {
+				byteBody, ok := body.([]byte)
+				if !ok {
+					log.Error("Encrypt body error", errors.New("body does not exist"))
+					return nil
+				}
+				encrypted, err := crypto.EncryptBig(byteBody, publicKey)
+				if err != nil {
+					log.Error("Encryption failed", err)
+					return nil
+				}
+				r.SetBody(encrypted)
+			} else {
+				log.Error("Encryption body error", errors.New("body is empty"))
+			}
+		}
+
 		headers := r.Header
 		for name := range r.Header {
 			for i := range headers[name] {
@@ -114,6 +164,7 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 		return nil
 	})
 
+	// Middleware: After Response
 	client.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
 		headers := r.Header()
 		for name := range headers {
@@ -141,73 +192,75 @@ func worker(m *metric.AgentMetrics, endpoint string, hashKey string, log logger.
 		return nil
 	})
 
-	for range jobs {
-		var metrics []entity.Metrics
-		gMetrics := m.GetAllGaugeNames()
-		for i := range gMetrics {
-			met := m.GetByName(gMetrics[i])
-			if num, err := strconv.ParseFloat(met.Value, 64); err == nil {
-				mc := entity.Metrics{
-					ID:    met.Name,
-					MType: met.Type,
-					Value: &num,
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-jobs:
+			var metrics []entity.Metrics
+			gMetrics := m.GetAllGaugeNames()
+			for _, name := range gMetrics {
+				met := m.GetByName(name)
+				if num, err := strconv.ParseFloat(met.Value, 64); err == nil {
+					metrics = append(metrics, entity.Metrics{
+						ID:    met.Name,
+						MType: met.Type,
+						Value: &num,
+					})
 				}
-				metrics = append(metrics, mc)
 			}
-		}
-		cMetrics := m.GetAllCounterNames()
-		for i := range cMetrics {
-			met := m.GetByName(cMetrics[i])
-			if num, err := strconv.ParseInt(met.Value, 10, 64); err == nil {
-				mc := entity.Metrics{
-					ID:    met.Name,
-					MType: met.Type,
-					Delta: &num,
+			cMetrics := m.GetAllCounterNames()
+			for _, name := range cMetrics {
+				met := m.GetByName(name)
+				if num, err := strconv.ParseInt(met.Value, 10, 64); err == nil {
+					metrics = append(metrics, entity.Metrics{
+						ID:    met.Name,
+						MType: met.Type,
+						Delta: &num,
+					})
 				}
-				metrics = append(metrics, mc)
 			}
+
+			if len(metrics) == 0 {
+				continue
+			}
+
+			dat, err := json.Marshal(metrics)
+			if err != nil {
+				log.Error("JSON marshal error", err)
+				continue
+			}
+
+			address := endpoint + "/updates/"
+
+			resp, err := repeater.New[[]byte, *resty.Response](log).
+				SetFunc(func(b []byte) (*resty.Response, error) {
+					log.Info("Sending metrics", "count", len(metrics), "url", address)
+					resp, err := client.R().
+						SetHeader("Content-Type", "application/json").
+						SetHeader(ContentEncodingHeader, EncodingType).
+						SetHeader(AcceptEncodingHeader, EncodingType).
+						SetBody(dat).
+						Post(address)
+
+					if err != nil {
+						return resp, errors.New(err.Error())
+					}
+					return resp, nil
+				}).
+				Run(dat)
+
+			if err != nil {
+				log.Error("Send failed", err)
+				continue
+			}
+
+			for _, name := range cMetrics {
+				m.ClearCounter(name)
+			}
+
+			log.Info("Send success", "status", resp.Status(), "count", len(metrics))
 		}
-
-		dat, rerr := json.Marshal(metrics)
-		if rerr != nil {
-			log.Error("Error on json create", rerr)
-			continue
-		}
-
-		address := endpoint + "/updates/"
-
-		resp, rerr := repeater.New[[]byte, *resty.Response](log).
-			SetFunc(func(b []byte) (*resty.Response, error) {
-				log.Info("Response to server",
-					"address", address,
-					"count", len(metrics))
-				resp, rerr := client.R().
-					SetHeader("Content-Type", "application/json").
-					SetHeader(ContentEncodingHeader, EncodingType).
-					SetHeader(AcceptEncodingHeader, EncodingType).
-					SetBody(dat).
-					Post(address)
-
-				if rerr != nil {
-					return resp, errors.New(rerr.Error())
-				}
-				return resp, nil
-			}).
-			// SetCondition(...).
-			Run(dat)
-
-		if rerr != nil {
-			log.Error("Response error", rerr)
-			continue
-		}
-
-		for i := range cMetrics {
-			m.ClearCounter(cMetrics[i])
-		}
-
-		log.Info("Response success",
-			"statusCode", resp.Status(),
-			"data", string(resp.Body()))
 	}
 }
 

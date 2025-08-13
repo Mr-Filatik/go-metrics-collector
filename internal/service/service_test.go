@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -16,36 +17,36 @@ var _ repository.Repository = (*MockRepository)(nil)
 
 // MockRepository — реализация Repository для тестов.
 type MockRepository struct {
-	GetByIDFunc func(id string) (entity.Metrics, error)
-	GetAllFunc  func() ([]entity.Metrics, error)
-	CreateFunc  func(e entity.Metrics) (string, error)
-	UpdateFunc  func(e entity.Metrics) (float64, int64, error)
-	RemoveFunc  func(e entity.Metrics) (string, error)
-	PingFunc    func() error
+	GetByIDFunc func(ctx context.Context, id string) (entity.Metrics, error)
+	GetAllFunc  func(ctx context.Context) ([]entity.Metrics, error)
+	CreateFunc  func(ctx context.Context, e entity.Metrics) (string, error)
+	UpdateFunc  func(ctx context.Context, e entity.Metrics) (float64, int64, error)
+	RemoveFunc  func(ctx context.Context, e entity.Metrics) (string, error)
+	PingFunc    func(ctx context.Context) error
 }
 
-func (m MockRepository) GetByID(id string) (entity.Metrics, error) {
-	return m.GetByIDFunc(id)
+func (m MockRepository) GetByID(ctx context.Context, id string) (entity.Metrics, error) {
+	return m.GetByIDFunc(ctx, id)
 }
 
-func (m MockRepository) Create(e entity.Metrics) (string, error) {
-	return m.CreateFunc(e)
+func (m MockRepository) Create(ctx context.Context, e entity.Metrics) (string, error) {
+	return m.CreateFunc(ctx, e)
 }
 
-func (m MockRepository) Update(e entity.Metrics) (float64, int64, error) {
-	return m.UpdateFunc(e)
+func (m MockRepository) Update(ctx context.Context, e entity.Metrics) (float64, int64, error) {
+	return m.UpdateFunc(ctx, e)
 }
 
-func (m MockRepository) Remove(e entity.Metrics) (string, error) {
-	return m.RemoveFunc(e)
+func (m MockRepository) Remove(ctx context.Context, e entity.Metrics) (string, error) {
+	return m.RemoveFunc(ctx, e)
 }
 
-func (m MockRepository) GetAll() ([]entity.Metrics, error) {
-	return m.GetAllFunc()
+func (m MockRepository) GetAll(ctx context.Context) ([]entity.Metrics, error) {
+	return m.GetAllFunc(ctx)
 }
 
-func (m MockRepository) Ping() error {
-	return m.PingFunc()
+func (m MockRepository) Ping(ctx context.Context) error {
+	return m.PingFunc(ctx)
 }
 
 var _ storage.Storage = (*MockStorage)(nil)
@@ -85,9 +86,10 @@ func TestNewService(t *testing.T) {
 
 func TestGetByID(t *testing.T) {
 	log := logger.New(logger.LevelDebug)
+	ctx := context.Background()
 
 	mockRepo := MockRepository{
-		GetByIDFunc: func(id string) (entity.Metrics, error) {
+		GetByIDFunc: func(ctx context.Context, id string) (entity.Metrics, error) {
 			if id == "valid" {
 				val := 42.0
 				delta := int64(10)
@@ -99,14 +101,14 @@ func TestGetByID(t *testing.T) {
 
 	t.Run("get valid gauge", func(t *testing.T) {
 		s := New(&mockRepo, nil, 0, log)
-		m, err := s.Get("valid", entity.Gauge)
+		m, err := s.Get(ctx, "valid", entity.Gauge)
 		assert.NoError(t, err)
 		assert.Equal(t, "valid", m.ID)
 	})
 
 	t.Run("metric not found", func(t *testing.T) {
 		s := New(&mockRepo, nil, 0, log)
-		m, err := s.Get("invalid", entity.Counter)
+		m, err := s.Get(ctx, "invalid", entity.Counter)
 		assert.Error(t, err)
 		assert.Equal(t, MetricNotFound, err.Error())
 		assert.Empty(t, m)
@@ -115,6 +117,7 @@ func TestGetByID(t *testing.T) {
 
 func TestGetAll(t *testing.T) {
 	log := logger.New(logger.LevelDebug)
+	ctx := context.Background()
 
 	metricList := []entity.Metrics{
 		{ID: "gauge1", MType: "gauge", Value: new(float64)},
@@ -122,13 +125,13 @@ func TestGetAll(t *testing.T) {
 	}
 
 	mockRepo := MockRepository{
-		GetAllFunc: func() ([]entity.Metrics, error) {
+		GetAllFunc: func(ctx context.Context) ([]entity.Metrics, error) {
 			return metricList, nil
 		},
 	}
 
 	s := New(&mockRepo, nil, 0, log)
-	result, err := s.GetAll()
+	result, err := s.GetAll(ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(metricList), len(result))
@@ -138,20 +141,21 @@ func TestGetAll(t *testing.T) {
 
 func TestCreateOrUpdate(t *testing.T) {
 	log := logger.New(logger.LevelDebug)
+	ctx := context.Background()
 
 	t.Run("create new metric", func(t *testing.T) {
 		mockRepo := MockRepository{
-			GetByIDFunc: func(id string) (entity.Metrics, error) {
+			GetByIDFunc: func(ctx context.Context, id string) (entity.Metrics, error) {
 				return entity.Metrics{}, errors.New(repository.ErrorMetricNotFound)
 			},
-			CreateFunc: func(e entity.Metrics) (string, error) {
+			CreateFunc: func(ctx context.Context, e entity.Metrics) (string, error) {
 				return e.ID, nil
 			},
 		}
 
 		s := New(&mockRepo, nil, 0, log)
 		e := entity.Metrics{ID: "new_metric", MType: entity.Gauge, Value: new(float64)}
-		res, err := s.CreateOrUpdate(e)
+		res, err := s.CreateOrUpdate(ctx, e)
 
 		assert.NoError(t, err)
 		assert.Equal(t, e.ID, res.ID)
@@ -159,11 +163,11 @@ func TestCreateOrUpdate(t *testing.T) {
 
 	t.Run("update counter", func(t *testing.T) {
 		mockRepo := MockRepository{
-			GetByIDFunc: func(id string) (entity.Metrics, error) {
+			GetByIDFunc: func(ctx context.Context, id string) (entity.Metrics, error) {
 				delta := int64(5)
 				return entity.Metrics{ID: id, MType: entity.Counter, Delta: &delta}, nil
 			},
-			UpdateFunc: func(e entity.Metrics) (float64, int64, error) {
+			UpdateFunc: func(ctx context.Context, e entity.Metrics) (float64, int64, error) {
 				del := *e.Delta
 				return 0, del, nil
 			},
@@ -174,7 +178,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		e := entity.Metrics{ID: "counter1", MType: entity.Counter, Delta: &delta}
 		*e.Delta = 1
 
-		res, err := s.CreateOrUpdate(e)
+		res, err := s.CreateOrUpdate(ctx, e)
 
 		assert.NoError(t, err)
 		assert.Equal(t, int64(6), *res.Delta)
@@ -192,7 +196,7 @@ func TestStart_AutoSave(t *testing.T) {
 	}
 
 	mockRepo := MockRepository{
-		GetAllFunc: func() ([]entity.Metrics, error) {
+		GetAllFunc: func(ctx context.Context) ([]entity.Metrics, error) {
 			return []entity.Metrics{{ID: "test", MType: entity.Gauge}}, nil
 		},
 	}
@@ -204,14 +208,16 @@ func TestStart_AutoSave(t *testing.T) {
 }
 
 func TestPing_WithErrors(t *testing.T) {
+	ctx := context.Background()
+
 	mockRepo := MockRepository{
-		PingFunc: func() error {
+		PingFunc: func(ctx context.Context) error {
 			return errors.New("can't ping repo")
 		},
 	}
 
 	s := New(&mockRepo, nil, 0, logger.New(logger.LevelDebug))
-	err := s.Ping()
+	err := s.Ping(ctx)
 
 	assert.Error(t, err)
 }

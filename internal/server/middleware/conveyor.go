@@ -7,41 +7,45 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 )
 
+// Middleware описывает сущность для middleware.
+type Middleware func(http.Handler) http.Handler
+
 // Conveyor описывает сущность конвеера для регистрации middleware.
 type Conveyor struct {
-	log     logger.Logger // логгер
-	hashKey string        // ключ хеширования
+	log         logger.Logger // логгер
+	middlewares []Middleware  // зарегистрированные middlewares
 }
 
 // New создаёт и инициализирует новый экзепляр *Conveyor.
 //
 // Параметры:
-//   - hashKey: ключ хэширования
 //   - l: логгер
-func New(hashKey string, l logger.Logger) *Conveyor {
+func New(l logger.Logger) *Conveyor {
 	return &Conveyor{
-		log:     l,
-		hashKey: hashKey,
+		log:         l,
+		middlewares: make([]Middleware, 0),
 	}
 }
 
-// Middleware описывает сущность для middleware.
-type Middleware func(http.Handler) http.Handler
-
-// MainConveyor создаёт основную последовательность middleware.
+// RegisterMiddlewares регистрирует слайс middlewares для применения их ко всем http.handler.
 //
-// Параметры:
-//   - h: обработчик
-func (c *Conveyor) MainConveyor(h http.Handler) http.Handler {
-	if c.hashKey != "" {
-		return c.registerConveyor(h, c.WithHashValidation, c.WithCompressedGzip, c.WithLogging)
-	}
-	return c.registerConveyor(h, c.WithCompressedGzip, c.WithLogging)
+// Порядок применения middleware следующий: m1 -> m2 -> m3 -> ... -> m3 -> m2 -> m1.
+//
+// Использовать так (для поддержки замыкания):
+//
+//	func(h http.Handler) http.Handler {
+//		return s.conveyor.WithMiddleware(h, data)
+//	}
+func (c *Conveyor) RegisterMiddlewares(ms ...Middleware) {
+	c.middlewares = ms
 }
 
-func (c *Conveyor) registerConveyor(h http.Handler, ms ...Middleware) http.Handler {
-	for _, m := range ms {
-		h = m(h)
+// Middlewares оборачивает http.handler в зарегистрированные middlewares.
+//
+// Порядок применения middleware следующий: m1 -> m2 -> m3 -> ... -> m3 -> m2 -> m1.
+func (c *Conveyor) Middlewares(h http.Handler) http.Handler {
+	for i := len(c.middlewares) - 1; i >= 0; i-- {
+		h = c.middlewares[i](h)
 	}
 	return h
 }

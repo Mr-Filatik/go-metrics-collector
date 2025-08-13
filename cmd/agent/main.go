@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
+	"crypto/rsa"
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
+	"os/signal"
+	"syscall"
 
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/agent/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
+	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 )
 
@@ -30,12 +34,39 @@ func main() {
 	conf := config.Initialize()
 	metrics := metric.New()
 
-	go updater.Run(metrics, conf.PollInterval)
-	go updater.RunMemory(metrics, conf.PollInterval)
-	go reporter.Run(metrics, conf.ServerAddress, conf.ReportInterval, conf.HashKey, conf.RateLimit, log)
-
-	err := http.ListenAndServe("localhost:8081", nil)
-	if err != nil {
-		log.Error("Server error", err)
+	var key *rsa.PublicKey = nil
+	if conf.CryptoKeyPath != "" {
+		k, err := crypto.LoadPublicKey(conf.CryptoKeyPath)
+		if err != nil {
+			log.Error("Load private key error", err)
+			return
+		}
+		key = k
 	}
+
+	// Привязка сигналов ОС к контексту
+	exitCtx, exitFn := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	defer exitFn()
+
+	go updater.Run(exitCtx, metrics, conf.PollInterval)
+	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
+	go reporter.Run(
+		exitCtx,
+		metrics,
+		conf.ServerAddress,
+		conf.ReportInterval,
+		conf.HashKey,
+		conf.RateLimit,
+		key,
+		log)
+
+	// Ожидание сигнала остановки
+	<-exitCtx.Done()
+	exitFn()
+
+	log.Info("Finish agent shutdown")
 }

@@ -3,6 +3,7 @@
 package updater
 
 import (
+	"context"
 	"time"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
@@ -11,25 +12,39 @@ import (
 // Run запускает обновление основных метрик с заданным интервалом.
 //
 // Параметры:
+//   - ctx: контекст для отмены
 //   - m: объект метрик (AgentMetrics)
 //   - pollInterval: интервал обновления метрик (в секундах)
-func Run(m *metric.AgentMetrics, pollInterval int64) {
-	t := time.Tick(time.Duration(pollInterval) * time.Second)
+func Run(ctx context.Context, m *metric.AgentMetrics, pollInterval int64) {
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
 
-	for range t {
-		m.Update()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.Update()
+		}
 	}
 }
 
 // RunMemory запускает обновление метрик памяти приложения с заданным интервалом.
 //
 // Параметры:
+//   - ctx: контекст для отмены
 //   - m: объект метрик (AgentMetrics)
 //   - pollInterval: интервал обновления метрик (в секундах)
-func RunMemory(m *metric.AgentMetrics, pollInterval int64) {
-	t := time.Tick(time.Duration(pollInterval) * time.Second)
+func RunMemory(ctx context.Context, m *metric.AgentMetrics, pollInterval int64) {
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
 
-	for range t {
-		m.UpdateMemory()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.UpdateMemory()
+		}
 	}
 }

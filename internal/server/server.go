@@ -3,9 +3,11 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
-	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -21,10 +23,11 @@ import (
 // Использует chi как маршрутизатор, service для бизнес-логики,
 // conveyor для обработки данных и logger для логирования.
 type Server struct {
-	router   *chi.Mux             // роутер
-	service  *service.Service     // сервис с основной логикой
-	conveyor *middleware.Conveyor // конвейер для middleware
-	log      logger.Logger        // логгер
+	router      *chi.Mux             // роутер
+	service     *service.Service     // сервис с основной логикой
+	conveyor    *middleware.Conveyor // конвейер для middleware
+	log         logger.Logger        // логгер
+	http.Server                      // сервер
 }
 
 // NewServer создаёт и инициализирует новый экзепляр *Server.
@@ -33,48 +36,64 @@ type Server struct {
 //   - s: слой сервиса с основной логикой
 //   - hashKey: ключ хэширования
 //   - l: логгер
-func NewServer(s *service.Service, hashKey string, l logger.Logger) *Server {
+func NewServer(
+	ctx context.Context,
+	addr string,
+	s *service.Service,
+	hashKey string,
+	privateKey *rsa.PrivateKey,
+	l logger.Logger) *Server {
 	srv := Server{
+		Server: http.Server{
+			Addr: addr,
+			BaseContext: func(_ net.Listener) context.Context {
+				return ctx
+			},
+		},
 		router:   chi.NewRouter(),
 		service:  s,
-		conveyor: middleware.New(hashKey, l),
+		conveyor: middleware.New(l),
 		log:      l,
 	}
-	srv.routes()
+	srv.registerMiddlewares(hashKey, privateKey)
+	srv.registerRoutes()
 	return &srv
 }
 
-func (s *Server) routes() {
-	s.router.Mount("/debug", http.DefaultServeMux)
-
-	s.router.Handle("/ping", s.conveyor.MainConveyor(http.HandlerFunc(s.Ping)))
-	s.router.Handle("/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetAllMetrics)))
-	s.router.Handle("/updates/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateAllMetrics)))
-	s.router.Handle("/value/", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetricJSON)))
-	s.router.Handle("/update/", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetricJSON)))
-	s.router.Handle("/value/{type}/{name}", s.conveyor.MainConveyor(http.HandlerFunc(s.GetMetric)))
-	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.MainConveyor(http.HandlerFunc(s.UpdateMetric)))
-}
-
-// Start запускает сервер по указанному адресу.
-//
-// Параметры:
-//   - serverAddress: адрес запуска сервера
-//   - restore: флаг, указывающий, загружать ли данные перед началом
-func (s *Server) Start(serverAddress string, restore bool) {
-	s.service.Start(restore)
-
-	s.log.Info(
-		"Start server",
-		"endpoint", serverAddress,
-		"restore data", restore,
-	)
-	err := http.ListenAndServe(serverAddress, s.router)
-	if err != nil {
-		log.Fatal(err)
+func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey) {
+	ms := []middleware.Middleware{
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithLogging(h)
+		},
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithDecryption(h, privateKey)
+		},
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithCompressedGzip(h)
+		},
 	}
 
-	s.service.Stop()
+	if hashKey != "" {
+		ms = append(ms, func(h http.Handler) http.Handler {
+			return s.conveyor.WithHashValidation(h, hashKey)
+		})
+	}
+
+	s.conveyor.RegisterMiddlewares(ms...)
+}
+
+func (s *Server) registerRoutes() {
+	s.router.Mount("/debug", http.DefaultServeMux)
+
+	s.router.Handle("/ping", s.conveyor.Middlewares(http.HandlerFunc(s.Ping)))
+	s.router.Handle("/", s.conveyor.Middlewares(http.HandlerFunc(s.GetAllMetrics)))
+	s.router.Handle("/updates/", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateAllMetrics)))
+	s.router.Handle("/value/", s.conveyor.Middlewares(http.HandlerFunc(s.GetMetricJSON)))
+	s.router.Handle("/update/", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateMetricJSON)))
+	s.router.Handle("/value/{type}/{name}", s.conveyor.Middlewares(http.HandlerFunc(s.GetMetric)))
+	s.router.Handle("/update/{type}/{name}/{value}", s.conveyor.Middlewares(http.HandlerFunc(s.UpdateMetric)))
+
+	s.Handler = s.router
 }
 
 // Ping проверяет доступность сервера.
@@ -88,7 +107,7 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.service.Ping()
+	err := s.service.Ping(r.Context())
 	if err != nil {
 		s.serverResponceInternalServerError(w, err)
 	}
@@ -105,7 +124,7 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mArr, err := s.service.GetAll()
+	mArr, err := s.service.GetAll(r.Context())
 	if err != nil {
 		s.serverResponceInternalServerError(w, err)
 		return
@@ -131,7 +150,7 @@ func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, m := range metr {
-		_, err := s.service.CreateOrUpdate(m)
+		_, err := s.service.CreateOrUpdate(r.Context(), m)
 		if err != nil {
 			if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
 				s.serverResponceBadRequest(w, err)
@@ -160,7 +179,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.service.Get(metr.ID, metr.MType)
+	m, err := s.service.Get(r.Context(), metr.ID, metr.MType)
 	if err != nil {
 		if err.Error() == service.MetricNotFound {
 			s.serverResponceNotFound(w, err)
@@ -203,7 +222,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.service.Get(metr.ID, metr.MType)
+	m, err := s.service.Get(r.Context(), metr.ID, metr.MType)
 	if err != nil {
 		if err.Error() == service.MetricNotFound {
 			s.serverResponceNotFound(w, err)
@@ -237,7 +256,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := s.service.CreateOrUpdate(metr)
+	_, err := s.service.CreateOrUpdate(r.Context(), metr)
 	if err != nil {
 		if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)
@@ -265,7 +284,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.service.CreateOrUpdate(metr)
+	m, err := s.service.CreateOrUpdate(r.Context(), metr)
 	if err != nil {
 		if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
 			s.serverResponceBadRequest(w, err)

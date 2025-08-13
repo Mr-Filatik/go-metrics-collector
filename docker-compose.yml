@@ -1,0 +1,14 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    ports:
+      - 8080:8080
+    environment:
+      - ADDRESS=:8080
+      - KEY=
+      - STORE_INTERVAL=300
+      - FILE_STORAGE_PATH=../../temp_metrics.json
+      - RESTORE=false
+      - DATABASE_DSN=
