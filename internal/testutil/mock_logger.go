@@ -5,9 +5,9 @@ import (
 )
 
 type MockLoggerLog struct {
-	Keyvals []interface{}
 	Err     error
 	Message string
+	Keyvals []interface{}
 	Level   logger.LogLevel
 }
 
