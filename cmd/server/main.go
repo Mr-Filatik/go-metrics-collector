@@ -75,7 +75,15 @@ func main() {
 	defer exitFn()
 
 	// Запуск сервера
-	serv := server.NewServer(exitCtx, conf.ServerAddress, srvc, conf.HashKey, key, log)
+	servConf := &server.ServerConfig{
+		Address:       conf.ServerAddress,
+		Service:       srvc,
+		HashKey:       conf.HashKey,
+		TrustedSubnet: conf.TrustedSubnet,
+		PrivateRsaKey: key,
+		Logger:        log,
+	}
+	serv := server.NewServer(exitCtx, servConf)
 	go func() {
 		log.Info(
 			"Start server",

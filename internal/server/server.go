@@ -30,40 +30,44 @@ type Server struct {
 	http.Server                      // сервер
 }
 
+type ServerConfig struct {
+	Logger        logger.Logger
+	PrivateRsaKey *rsa.PrivateKey
+	Service       *service.Service
+	Address       string
+	HashKey       string
+	TrustedSubnet string
+}
+
 // NewServer создаёт и инициализирует новый экзепляр *Server.
 //
 // Параметры:
-//   - s: слой сервиса с основной логикой
-//   - hashKey: ключ хэширования
-//   - l: логгер
-func NewServer(
-	ctx context.Context,
-	addr string,
-	s *service.Service,
-	hashKey string,
-	privateKey *rsa.PrivateKey,
-	l logger.Logger) *Server {
+//   - conf: конфиг сервера
+func NewServer(ctx context.Context, conf *ServerConfig) *Server {
 	srv := Server{
 		Server: http.Server{
-			Addr: addr,
+			Addr: conf.Address,
 			BaseContext: func(_ net.Listener) context.Context {
 				return ctx
 			},
 		},
 		router:   chi.NewRouter(),
-		service:  s,
-		conveyor: middleware.New(l),
-		log:      l,
+		service:  conf.Service,
+		conveyor: middleware.New(conf.Logger),
+		log:      conf.Logger,
 	}
-	srv.registerMiddlewares(hashKey, privateKey)
+	srv.registerMiddlewares(conf.HashKey, conf.PrivateRsaKey, conf.TrustedSubnet)
 	srv.registerRoutes()
 	return &srv
 }
 
-func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey) {
+func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey, ts string) {
 	ms := []middleware.Middleware{
 		func(h http.Handler) http.Handler {
 			return s.conveyor.WithLogging(h)
+		},
+		func(h http.Handler) http.Handler {
+			return s.conveyor.WithTrustSubnet(h, ts)
 		},
 		func(h http.Handler) http.Handler {
 			return s.conveyor.WithDecryption(h, privateKey)
