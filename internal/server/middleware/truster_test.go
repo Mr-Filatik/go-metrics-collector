@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +15,7 @@ type subnetTestInfo struct {
 }
 
 func TestWithTrustSubnet(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	tests := []struct {

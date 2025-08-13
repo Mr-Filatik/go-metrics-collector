@@ -1,66 +1,20 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
-
-type mockLogger struct {
-	debugCalled []string
-	infoCalled  []string
-	errorCalled []string
-	warnCalled  []string
-}
-
-func (m *mockLogger) Log(log logger.LogLevel, msg string, keyvals ...interface{}) {
-	m.debugCalled = append(m.debugCalled, msg)
-}
-
-func (m *mockLogger) Debug(msg string, keyvals ...interface{}) {
-	m.debugCalled = append(m.debugCalled, msg)
-}
-
-func (m *mockLogger) Info(msg string, keyvals ...interface{}) {
-	var parts []string
-	parts = append(parts, msg)
-	for i := 0; i < len(keyvals); i += 2 {
-		key, ok := keyvals[i].(string)
-		if !ok {
-			continue
-		}
-		var value string
-		if i+1 < len(keyvals) {
-			value = fmt.Sprint(keyvals[i+1])
-		} else {
-			value = "<no-value>"
-		}
-		parts = append(parts, fmt.Sprintf("%s=%s", key, value))
-	}
-	m.infoCalled = append(m.infoCalled, strings.Join(parts, " "))
-}
-
-func (m *mockLogger) Error(msg string, err error, keyvals ...interface{}) {
-	m.errorCalled = append(m.errorCalled, msg)
-}
-
-func (m *mockLogger) Warn(msg string, keyvals ...interface{}) {
-	m.warnCalled = append(m.warnCalled, msg)
-}
-
-func (m *mockLogger) Close() {}
 
 func echoHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(r.URL.Path))
 }
 
 func TestRegisterMiddlewares(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	m1 := func(next http.Handler) http.Handler {
@@ -76,7 +30,7 @@ func TestRegisterMiddlewares(t *testing.T) {
 }
 
 func TestMiddlewares_Replaces(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	var count1 int
@@ -122,7 +76,7 @@ func TestMiddlewares_Replaces(t *testing.T) {
 }
 
 func TestMiddlewares_Order(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	var order []string

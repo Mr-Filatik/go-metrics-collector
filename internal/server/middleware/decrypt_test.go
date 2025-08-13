@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func generateTestKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
 }
 
 func TestWithDecryption_Success(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	privateKey, publicKey := generateTestKeys(t)
@@ -53,7 +54,7 @@ func TestWithDecryption_Success(t *testing.T) {
 }
 
 func TestWithDecryption_NoKey(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	body := `{"id":"test"}`

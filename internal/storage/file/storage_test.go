@@ -6,39 +6,10 @@ import (
 	"testing"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockLogger struct {
-	debugCalled []string
-	infoCalled  []string
-	errorCalled []string
-	warnCalled  []string
-}
-
-func (m *mockLogger) Log(log logger.LogLevel, msg string, keyvals ...interface{}) {
-	m.debugCalled = append(m.debugCalled, msg)
-}
-
-func (m *mockLogger) Debug(msg string, keyvals ...interface{}) {
-	m.debugCalled = append(m.debugCalled, msg)
-}
-
-func (m *mockLogger) Info(msg string, keyvals ...interface{}) {
-	m.infoCalled = append(m.infoCalled, msg)
-}
-
-func (m *mockLogger) Error(msg string, err error, keyvals ...interface{}) {
-	m.errorCalled = append(m.errorCalled, msg)
-}
-
-func (m *mockLogger) Warn(msg string, keyvals ...interface{}) {
-	m.warnCalled = append(m.warnCalled, msg)
-}
-
-func (m *mockLogger) Close() {}
 
 func createTempFile(t *testing.T, content []byte) string {
 	t.Helper()
@@ -63,7 +34,7 @@ func floatPtr(f float64) *float64 { return &f }
 func intPtr(i int64) *int64       { return &i }
 
 func TestNew(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	storage := New("/tmp/metrics.json", mockLog)
 
 	require.NotNil(t, storage)
@@ -72,7 +43,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSaveData_Success(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	tmpFile := createTempFile(t, nil) // пустой файл
 
 	storage := New(tmpFile, mockLog)
@@ -108,7 +79,7 @@ func TestLoadData_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	tmpFile := createTempFile(t, content)
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 
 	storage := New(tmpFile, mockLog)
 	loaded, err := storage.LoadData()
@@ -118,7 +89,7 @@ func TestLoadData_Success(t *testing.T) {
 }
 
 func TestLoadData_FileNotFound(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	storage := New("/tmp/nonexistent.json", mockLog)
 
 	data, err := storage.LoadData()
@@ -130,7 +101,7 @@ func TestLoadData_FileNotFound(t *testing.T) {
 
 func TestLoadData_InvalidJSON(t *testing.T) {
 	tmpFile := createTempFile(t, []byte("invalid json {]"))
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 
 	storage := New(tmpFile, mockLog)
 	data, err := storage.LoadData()

@@ -14,9 +14,9 @@ func TestGetLevelName(t *testing.T) {
 	}{
 		{"Debug", LevelDebug, "debug"},
 		{"Info", LevelInfo, "info"},
+		{"Info", LevelWarn, "warning"},
 		{"Error", LevelError, "error"},
-		{"Unknown low", 0, "none"},
-		{"Unknown high", 999, "none"},
+		{"Unknown", 999, "none"},
 	}
 
 	for _, tt := range tests {

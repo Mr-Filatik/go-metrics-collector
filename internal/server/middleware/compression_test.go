@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +29,7 @@ func compressString(data string) (*bytes.Buffer, error) {
 }
 
 func TestWithCompressedGzip_RequestDecompress(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	originalBody := `{"id":"test","mtype":"gauge","value":3.14}`
@@ -56,7 +57,7 @@ func TestWithCompressedGzip_RequestDecompress(t *testing.T) {
 }
 
 func TestWithCompressedGzip_ResponseCompress(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
@@ -87,7 +88,7 @@ func TestWithCompressedGzip_ResponseCompress(t *testing.T) {
 }
 
 func TestWithCompressedGzip_NoCompression_Request(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(`{"id":"test"}`))
@@ -110,7 +111,7 @@ func TestWithCompressedGzip_NoCompression_Request(t *testing.T) {
 }
 
 func TestWithCompressedGzip_NoCompression_Response(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodPost, "/metrics", http.NoBody)
@@ -132,7 +133,7 @@ func TestWithCompressedGzip_NoCompression_Response(t *testing.T) {
 }
 
 func TestWithCompressedGzip_InvalidGzip(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader("invalid gzip data"))
