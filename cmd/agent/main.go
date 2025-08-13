@@ -14,6 +14,7 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
+	"github.com/go-resty/resty/v2"
 )
 
 // go run -ldflags "-X main.buildVersion=v2.0.0 -X main.buildDate=2025-07-07 -X main.buildCommit=98d1d98".
@@ -44,6 +45,11 @@ func main() {
 		key = k
 	}
 
+	realIP, err := getExternalRealIP()
+	if err != nil {
+		panic(err)
+	}
+
 	// Привязка сигналов ОС к контексту
 	exitCtx, exitFn := signal.NotifyContext(
 		context.Background(),
@@ -62,6 +68,7 @@ func main() {
 		conf.HashKey,
 		conf.RateLimit,
 		key,
+		realIP,
 		log)
 
 	// Ожидание сигнала остановки
@@ -69,4 +76,15 @@ func main() {
 	exitFn()
 
 	log.Info("Finish agent shutdown")
+}
+
+func getExternalRealIP() (string, error) {
+	client := resty.New()
+
+	resp, err := client.R().Get("https://api.ipify.org")
+	if err != nil {
+		return "", fmt.Errorf("connect error: %w", err)
+	}
+
+	return string(resp.Body()), nil
 }

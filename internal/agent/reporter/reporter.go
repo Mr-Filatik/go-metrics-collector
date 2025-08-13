@@ -51,12 +51,13 @@ func Run(
 	hashKey string,
 	lim int64,
 	publicKey *rsa.PublicKey,
+	realIP string,
 	log logger.Logger) {
 	jobs := make(chan struct{}, lim)
 	defer close(jobs)
 
 	for w := int64(1); w <= lim; w++ {
-		go worker(ctx, m, endpoint, hashKey, publicKey, log, jobs)
+		go worker(ctx, m, endpoint, hashKey, publicKey, realIP, log, jobs)
 	}
 
 	ticker := time.NewTicker(time.Duration(reportInterval) * time.Second)
@@ -82,6 +83,7 @@ func worker(
 	endpoint string,
 	hashKey string,
 	publicKey *rsa.PublicKey,
+	realIP string,
 	log logger.Logger,
 	jobs <-chan struct{},
 ) {
@@ -240,6 +242,7 @@ func worker(
 						SetHeader("Content-Type", "application/json").
 						SetHeader(ContentEncodingHeader, EncodingType).
 						SetHeader(AcceptEncodingHeader, EncodingType).
+						SetHeader("X-Real-IP", realIP).
 						SetBody(dat).
 						Post(address)
 
