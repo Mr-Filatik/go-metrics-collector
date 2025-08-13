@@ -13,6 +13,7 @@ type configEnvs struct {
 	hashKey              string // ключ хэширования
 	serverAddress        string // адрес сервера
 	storagePath          string // путь до файла хранилища (относительный)
+	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
 	configPathIsValue    bool
@@ -21,6 +22,7 @@ type configEnvs struct {
 	hashKeyIsValue       bool
 	serverAddressIsValue bool
 	storagePathIsValue   bool
+	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
 }
@@ -66,6 +68,12 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 	if ok && envFileStoragePath != "" {
 		config.storagePath = envFileStoragePath
 		config.storagePathIsValue = true
+	}
+
+	envTrustedSubnet, ok := getenv("TRUSTED_SUBNET")
+	if ok && envTrustedSubnet != "" {
+		config.trustedSubnet = envTrustedSubnet
+		config.trustedSubnetIsValue = true
 	}
 
 	envReportInterval, ok := getenv("STORE_INTERVAL")
@@ -117,6 +125,9 @@ func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
 	}
 	if conf.storagePathIsValue {
 		c.FileStoragePath = conf.storagePath
+	}
+	if conf.trustedSubnetIsValue {
+		c.TrustedSubnet = conf.trustedSubnet
 	}
 	if conf.storeIntervalIsValue {
 		c.StoreInterval = conf.storeInterval

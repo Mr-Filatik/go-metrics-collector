@@ -14,6 +14,7 @@ type configFlags struct {
 	hashKey              string // ключ хэширования
 	serverAddress        string // адрес сервера
 	storagePath          string // путь до файла хранилища (относительный)
+	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
 	configPathIsValue    bool
@@ -22,6 +23,7 @@ type configFlags struct {
 	hashKeyIsValue       bool
 	serverAddressIsValue bool
 	storagePathIsValue   bool
+	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
 }
@@ -37,6 +39,7 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	argK := fs.String("k", "", "Hash key")
 	argA := fs.String("a", "", "HTTP server endpoint")
 	argF := fs.String("f", "", "Path to file")
+	argT := fs.String("t", "", "Trusted subnet")
 	argI := fs.Int64("i", 0, "Interval in seconds to save data")
 	argR := fs.Bool("r", false, "Loading data when the application starts")
 
@@ -71,6 +74,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	if argF != nil && *argF != "" {
 		config.storagePath = *argF
 		config.storagePathIsValue = true
+	}
+	if argT != nil && *argT != "" {
+		config.trustedSubnet = *argT
+		config.trustedSubnetIsValue = true
 	}
 	if argI != nil && *argI != 0 {
 		config.storeInterval = *argI
@@ -116,6 +123,9 @@ func (c *Config) overrideConfigFromFlags(conf *configFlags) {
 	}
 	if conf.storagePathIsValue {
 		c.FileStoragePath = conf.storagePath
+	}
+	if conf.trustedSubnetIsValue {
+		c.TrustedSubnet = conf.trustedSubnet
 	}
 	if conf.storeIntervalIsValue {
 		c.StoreInterval = conf.storeInterval
