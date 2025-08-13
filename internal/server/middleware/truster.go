@@ -20,6 +20,7 @@ func (c *Conveyor) WithTrustSubnet(next http.Handler, ts string) http.Handler {
 		subnetFromHeader := r.Header.Get("X-Real-IP")
 		if subnetFromHeader != ts {
 			msg := strings.Join([]string{"subnet", subnetFromHeader, "no trusted"}, " ")
+			c.log.Info(msg)
 			http.Error(w, msg, http.StatusForbidden)
 			return
 		}
