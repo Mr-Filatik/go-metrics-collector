@@ -84,9 +84,9 @@ func main() {
 }
 
 func getExternalRealIP() (string, error) {
-	client := resty.New()
+	cl := resty.New()
 
-	resp, err := client.R().Get("https://api.ipify.org")
+	resp, err := cl.R().Get("https://api.ipify.org")
 	if err != nil {
 		return "", fmt.Errorf("connect error: %w", err)
 	}
