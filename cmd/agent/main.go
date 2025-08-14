@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rsa"
 	"fmt"
 	_ "net/http/pprof"
 	"os/signal"
@@ -13,7 +12,6 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/client"
-	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/go-resty/resty/v2"
 )
@@ -36,20 +34,20 @@ func main() {
 	conf := config.Initialize()
 	metrics := metric.New()
 
-	var key *rsa.PublicKey = nil
-	if conf.CryptoKeyPath != "" {
-		k, err := crypto.LoadPublicKey(conf.CryptoKeyPath)
-		if err != nil {
-			log.Error("Load private key error", err)
-			return
-		}
-		key = k
-	}
+	// var key *rsa.PublicKey = nil
+	// if conf.CryptoKeyPath != "" {
+	// 	k, err := crypto.LoadPublicKey(conf.CryptoKeyPath)
+	// 	if err != nil {
+	// 		log.Error("Load private key error", err)
+	// 		return
+	// 	}
+	// 	key = k
+	// }
 
-	realIP, err := getExternalRealIP()
-	if err != nil {
-		panic(err)
-	}
+	// realIP, err := getExternalRealIP()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// Привязка сигналов ОС к контексту
 	exitCtx, exitFn := signal.NotifyContext(
@@ -59,13 +57,17 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
-	clientConfig := &client.RestyClientConfig{
-		PublicKey: key,
-		URL:       conf.ServerAddress,
-		XRealIP:   realIP,
-		HashKey:   conf.HashKey,
+	// clientConfig := &client.RestyClientConfig{
+	// 	PublicKey: key,
+	// 	URL:       conf.ServerAddress,
+	// 	XRealIP:   realIP,
+	// 	HashKey:   conf.HashKey,
+	// }
+	// cl := client.NewRestyClient(clientConfig, log)
+	clientConfig := &client.GrpcClientConfig{
+		URL: conf.ServerAddress,
 	}
-	cl := client.NewRestyClient(clientConfig, log)
+	cl := client.NewGrpcClient(clientConfig, log)
 	go updater.Run(exitCtx, metrics, conf.PollInterval)
 	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
