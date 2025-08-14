@@ -82,14 +82,18 @@ func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
 }
 
 // Warn логирует сообщение и параметры в уровне warning.
-// Дополнительно логирует причину ошибки в поле reason.
+// Дополнительно может логировать причину ошибки в поле reason.
 //
 // Параметры:
 //   - message: сообщение
-//   - err: ошибка
+//   - err: ошибка (необязательное поле)
 //   - keysAndValues: дополнительные пары ключ-значение
 func (l *ZapSugarLogger) Warn(message string, err error, keysAndValues ...interface{}) {
 	if LevelInfo >= l.minLogLevel {
+		if err == nil {
+			l.logger.Infow(message, keysAndValues...)
+			return
+		}
 		addKeysAndValues := append([]interface{}{"reason", err.Error()}, keysAndValues...)
 		l.logger.Infow(message, addKeysAndValues...)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/client"
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/go-resty/resty/v2"
@@ -58,17 +59,21 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
+	clientConfig := &client.RestyClientConfig{
+		PublicKey: key,
+		URL:       conf.ServerAddress,
+		XRealIP:   realIP,
+		HashKey:   conf.HashKey,
+	}
+	client := client.NewRestyClient(clientConfig, log)
 	go updater.Run(exitCtx, metrics, conf.PollInterval)
 	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
 		exitCtx,
 		metrics,
-		conf.ServerAddress,
 		conf.ReportInterval,
-		conf.HashKey,
 		conf.RateLimit,
-		key,
-		realIP,
+		client,
 		log)
 
 	// Ожидание сигнала остановки
