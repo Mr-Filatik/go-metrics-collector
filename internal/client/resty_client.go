@@ -51,49 +51,41 @@ func NewRestyClient(config *RestyClientConfig, l logger.Logger) *RestyClient {
 }
 
 // registerMiddlewares регистрирует все необходимые middleware для клиента.
-func (client *RestyClient) registerMiddlewares(hashKey string, publicKey *rsa.PublicKey) {
-	client.restyClient.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-		hashErr := client.hashingMiddleware(r, hashKey)
+func (c *RestyClient) registerMiddlewares(hashKey string, publicKey *rsa.PublicKey) {
+	c.restyClient.OnBeforeRequest(func(cc *resty.Client, r *resty.Request) error {
+		hashErr := c.hashingMiddleware(r, hashKey)
 		if hashErr != nil {
-			client.log.Error("Hashing body error", hashErr)
+			c.log.Error("Hashing body error", hashErr)
 			return nil
 		}
 
-		comprErr := client.compressingMiddleware(r)
+		comprErr := c.compressingMiddleware(r)
 		if comprErr != nil {
-			client.log.Error("Compressing body error", comprErr)
+			c.log.Error("Compressing body error", comprErr)
 			return nil
 		}
 
-		encrErr := client.encryptingMiddleware(r, publicKey)
+		encrErr := c.encryptingMiddleware(r, publicKey)
 		if encrErr != nil {
-			client.log.Error("Encryption body error", encrErr)
+			c.log.Error("Encryption body error", encrErr)
 			return nil
 		}
 
 		// Логирование заголовков запроса.
-		headers := r.Header
-		hdrs := make([]interface{}, 0)
-		for name := range headers {
-			hdrs = append(hdrs, name, strings.Join(headers[name], " "))
-		}
-		client.log.Debug("Request headers", hdrs...)
+		hdrs := convertHeadersToSlice(r.Header)
+		c.log.Debug("Request headers", hdrs...)
 
 		return nil
 	})
 
-	client.restyClient.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
+	c.restyClient.OnAfterResponse(func(cc *resty.Client, r *resty.Response) error {
 		// Логирование заголовков ответа.
-		headers := r.Header()
-		hdrs := make([]interface{}, 0)
-		for name := range headers {
-			hdrs = append(hdrs, name, strings.Join(headers[name], " "))
-		}
-		client.log.Debug("Response headers", hdrs...)
+		hdrs := convertHeadersToSlice(r.Header())
+		c.log.Debug("Response headers", hdrs...)
 
-		decompErr := client.decompressingMiddleware(r)
+		decompErr := c.decompressingMiddleware(r)
 		if decompErr != nil {
-			client.log.Error("Decompress body error", decompErr)
+			c.log.Error("Decompress body error", decompErr)
 			return nil
 		}
 
@@ -102,7 +94,7 @@ func (client *RestyClient) registerMiddlewares(hashKey string, publicKey *rsa.Pu
 }
 
 // hashingMiddleware добавляет заголовок с хэшем тела запроса.
-func (client *RestyClient) hashingMiddleware(r *resty.Request, hashKey string) error {
+func (c *RestyClient) hashingMiddleware(r *resty.Request, hashKey string) error {
 	if hashKey == "" {
 		// Хеширование отключено
 		return nil
@@ -128,12 +120,12 @@ func (client *RestyClient) hashingMiddleware(r *resty.Request, hashKey string) e
 
 	r.Header.Set(HashHeader, hashStr)
 
-	client.log.Debug("HashSHA256 added to request headers", "hash", hashStr)
+	c.log.Debug("HashSHA256 added to request headers")
 	return nil
 }
 
 // compressingMiddleware сжимает тело запроса.
-func (client *RestyClient) compressingMiddleware(r *resty.Request) error {
+func (c *RestyClient) compressingMiddleware(r *resty.Request) error {
 	if !strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
 		// Сжатие отключено
 		return nil
@@ -159,12 +151,12 @@ func (client *RestyClient) compressingMiddleware(r *resty.Request) error {
 
 	r.SetBody(compressedBody)
 
-	client.log.Debug("Compress body", "fromSize", len(byteBody), "toSize", len(compressedBody))
+	c.log.Debug("Compress body", "fromSize", len(byteBody), "toSize", len(compressedBody))
 	return nil
 }
 
 // decompressingMiddleware расжимает тело ответа.
-func (client *RestyClient) decompressingMiddleware(r *resty.Response) error {
+func (c *RestyClient) decompressingMiddleware(r *resty.Response) error {
 	if !strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
 		// Сжатие отключено
 		return nil
@@ -181,12 +173,12 @@ func (client *RestyClient) decompressingMiddleware(r *resty.Response) error {
 
 	r.SetBody(val)
 
-	client.log.Debug("Decompress body", "fromSize", len(r.Body()), "toSize", len(val))
+	c.log.Debug("Decompress body", "fromSize", len(r.Body()), "toSize", len(val))
 	return nil
 }
 
 // encryptingMiddleware шифрует тело запроса.
-func (client *RestyClient) encryptingMiddleware(r *resty.Request, publicKey *rsa.PublicKey) error {
+func (c *RestyClient) encryptingMiddleware(r *resty.Request, publicKey *rsa.PublicKey) error {
 	if publicKey == nil {
 		// Шифрование отключено
 		return nil
@@ -209,18 +201,41 @@ func (client *RestyClient) encryptingMiddleware(r *resty.Request, publicKey *rsa
 
 	r.SetBody(encrypted)
 
-	client.log.Debug("Encrypt body")
+	c.log.Debug("Encrypt body")
 	return nil
 }
 
-func (client *RestyClient) SendMetric(m entity.Metrics) error {
-	client.log.Warn("SendMetric(m entity.Metrics) not worked", nil)
+func convertHeadersToSlice(headers http.Header) []interface{} {
+	sensitiveHeaders := map[string]struct{}{
+		"authorization": {},
+		"cookie":        {},
+		"x-api-key":     {},
+		"x-api-secret":  {},
+		"set-cookie":    {},
+		"hashsha256":    {},
+	}
+
+	hdrs := make([]interface{}, 0)
+	for name := range headers {
+		lowerName := strings.ToLower(name)
+		if _, ok := sensitiveHeaders[lowerName]; ok {
+			hdrs = append(hdrs, name, "***")
+		} else {
+			hdrs = append(hdrs, name, strings.Join(headers[name], " "))
+		}
+	}
+
+	return hdrs
+}
+
+func (c *RestyClient) SendMetric(m entity.Metrics) error {
+	c.log.Warn("SendMetric(m entity.Metrics) not worked", nil)
 	return nil
 }
 
-func (client *RestyClient) SendMetrics(ms []entity.Metrics) error {
+func (c *RestyClient) SendMetrics(ms []entity.Metrics) error {
 	if len(ms) == 0 {
-		client.log.Warn("Sending metrics is empty", nil)
+		c.log.Warn("Sending metrics is empty", nil)
 		return nil
 	}
 
@@ -229,16 +244,16 @@ func (client *RestyClient) SendMetrics(ms []entity.Metrics) error {
 		return fmt.Errorf("JSON marshal error: %w", err)
 	}
 
-	resp, err := repeater.New[[]byte, *resty.Response](client.log).
+	resp, err := repeater.New[[]byte, *resty.Response](c.log).
 		SetFunc(func(b []byte) (*resty.Response, error) {
-			client.log.Info("Sending metrics", "url", client.url)
-			resp, err := client.restyClient.R().
+			c.log.Info("Sending metrics", "url", c.url)
+			resp, err := c.restyClient.R().
 				SetHeader("Content-Type", "application/json").
 				SetHeader(ContentEncodingHeader, EncodingType).
 				SetHeader(AcceptEncodingHeader, EncodingType).
-				SetHeader("X-Real-IP", client.xRealIP).
+				SetHeader("X-Real-IP", c.xRealIP).
 				SetBody(dat).
-				Post(client.url)
+				Post(c.url)
 
 			if err != nil {
 				return resp, errors.New(err.Error())
@@ -256,6 +271,11 @@ func (client *RestyClient) SendMetrics(ms []entity.Metrics) error {
 		return fmt.Errorf("responce status code not OK: %w", err)
 	}
 
-	client.log.Debug("Send metrics success", "url", client.url, "status", resp.Status())
+	c.log.Debug("Send metrics success", "url", c.url, "status", resp.Status())
+	return nil
+}
+
+func (c *RestyClient) Close() error {
+	c.log.Warn("Not implemented *RestyClient.Close().", nil)
 	return nil
 }

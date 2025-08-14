@@ -23,6 +23,7 @@ var (
 
 // Client - интерфейс для всех клиентов приложения.
 type Client interface {
+	io.Closer
 	SendMetric(m entity.Metrics) error
 	SendMetrics(ms []entity.Metrics) error
 }
