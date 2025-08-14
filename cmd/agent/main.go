@@ -65,7 +65,7 @@ func main() {
 		XRealIP:   realIP,
 		HashKey:   conf.HashKey,
 	}
-	client := client.NewRestyClient(clientConfig, log)
+	cl := client.NewRestyClient(clientConfig, log)
 	go updater.Run(exitCtx, metrics, conf.PollInterval)
 	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
@@ -73,7 +73,7 @@ func main() {
 		metrics,
 		conf.ReportInterval,
 		conf.RateLimit,
-		client,
+		cl,
 		log)
 
 	// Ожидание сигнала остановки

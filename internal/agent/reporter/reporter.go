@@ -29,13 +29,13 @@ func Run(
 	m *metric.AgentMetrics,
 	reportInterval int64,
 	lim int64,
-	client client.Client,
+	cl client.Client,
 	log logger.Logger) {
 	jobs := make(chan struct{}, lim)
 	defer close(jobs)
 
 	for w := int64(1); w <= lim; w++ {
-		go worker(ctx, m, client, log, jobs)
+		go worker(ctx, m, cl, log, jobs)
 	}
 
 	ticker := time.NewTicker(time.Duration(reportInterval) * time.Second)
@@ -58,7 +58,7 @@ func Run(
 func worker(
 	ctx context.Context,
 	m *metric.AgentMetrics,
-	client client.Client,
+	cl client.Client,
 	log logger.Logger,
 	jobs <-chan struct{},
 ) {
@@ -91,7 +91,7 @@ func worker(
 				}
 			}
 
-			err := client.SendMetrics(metrics)
+			err := cl.SendMetrics(metrics)
 			if err != nil {
 				log.Error("Sending metrics error", err)
 				continue

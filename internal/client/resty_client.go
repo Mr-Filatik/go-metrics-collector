@@ -20,10 +20,10 @@ import (
 
 // RestyClient - клиент для отправки запросов к серверу.
 type RestyClient struct {
-	client  *resty.Client
-	log     logger.Logger
-	url     string
-	xRealIP string
+	restyClient *resty.Client
+	log         logger.Logger
+	url         string
+	xRealIP     string
 }
 
 var _ Client = (*RestyClient)(nil)
@@ -39,10 +39,10 @@ type RestyClientConfig struct {
 // NewRestyClient создаёт новый экземпляр *RestyClient.
 func NewRestyClient(config *RestyClientConfig, l logger.Logger) *RestyClient {
 	client := &RestyClient{
-		client:  resty.New(),
-		url:     config.URL + "/updates/",
-		xRealIP: config.XRealIP,
-		log:     l,
+		restyClient: resty.New(),
+		url:         config.URL + "/updates/",
+		xRealIP:     config.XRealIP,
+		log:         l,
 	}
 
 	client.registerMiddlewares(config.HashKey, config.PublicKey)
@@ -52,7 +52,7 @@ func NewRestyClient(config *RestyClientConfig, l logger.Logger) *RestyClient {
 
 // registerMiddlewares регистрирует все необходимые middleware для клиента.
 func (client *RestyClient) registerMiddlewares(hashKey string, publicKey *rsa.PublicKey) {
-	client.client.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
+	client.restyClient.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
 		hashErr := client.hashingMiddleware(r, hashKey)
 		if hashErr != nil {
 			client.log.Error("Hashing body error", hashErr)
@@ -82,7 +82,7 @@ func (client *RestyClient) registerMiddlewares(hashKey string, publicKey *rsa.Pu
 		return nil
 	})
 
-	client.client.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
+	client.restyClient.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
 		// Логирование заголовков ответа.
 		headers := r.Header()
 		hdrs := make([]interface{}, 0)
@@ -232,7 +232,7 @@ func (client *RestyClient) SendMetrics(ms []entity.Metrics) error {
 	resp, err := repeater.New[[]byte, *resty.Response](client.log).
 		SetFunc(func(b []byte) (*resty.Response, error) {
 			client.log.Info("Sending metrics", "url", client.url)
-			resp, err := client.client.R().
+			resp, err := client.restyClient.R().
 				SetHeader("Content-Type", "application/json").
 				SetHeader(ContentEncodingHeader, EncodingType).
 				SetHeader(AcceptEncodingHeader, EncodingType).
