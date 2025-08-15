@@ -40,7 +40,7 @@ func (c *Conveyor) TrustingInterceptor(
 	if realIP != c.trustedSubnet {
 		msg := strings.Join([]string{"subnet", realIP, "not trusted"}, " ")
 		c.log.Error("Subnet not trusted", errors.New(msg))
-		return nil, status.Errorf(codes.PermissionDenied, msg)
+		return nil, status.Errorf(codes.PermissionDenied, "subnet not trusted")
 	}
 
 	return handler(ctx, req)

@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"net/url"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -126,21 +124,4 @@ func main() {
 	}
 
 	log.Info("Application shutdown is successfull")
-}
-
-func removePortFromURL(input string) (string, error) {
-	parsed, err := url.Parse(input)
-	if err != nil {
-		return "", err
-	}
-
-	// Удаляем порт из Host
-	host := parsed.Host
-	if idx := strings.Index(host, ":"); idx != -1 {
-		host = host[:idx]
-	}
-
-	// Пересобираем URL
-	parsed.Host = host
-	return parsed.String(), nil
 }

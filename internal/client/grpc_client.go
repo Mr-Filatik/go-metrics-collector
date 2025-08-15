@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -134,21 +133,4 @@ func (c *GrpcClient) Close() error {
 		return fmt.Errorf("close *GrpcClient.Close() error: %w", err)
 	}
 	return nil
-}
-
-func removePortFromURL(input string) (string, error) {
-	parsed, err := url.Parse(input)
-	if err != nil {
-		return "", err
-	}
-
-	// Удаляем порт из Host
-	host := parsed.Host
-	if idx := strings.Index(host, ":"); idx != -1 {
-		host = host[:idx]
-	}
-
-	// Пересобираем URL
-	parsed.Host = host
-	return parsed.String(), nil
 }

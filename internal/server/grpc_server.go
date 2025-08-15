@@ -108,10 +108,8 @@ func (s *GrpcServer) UpdateMetrics(
 		_, err := s.service.CreateOrUpdate(ctx, m)
 		if err != nil {
 			if err.Error() == service.MetricNotFound || err.Error() == service.MetricUncorrect {
-				//s.serverResponceBadRequest(w, err)
 				return nil, errors.New("uncorrect request data")
 			}
-			//s.serverResponceInternalServerError(w, err)
 			return nil, errors.New("unespected error")
 		}
 	}

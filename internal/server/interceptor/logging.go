@@ -35,7 +35,7 @@ func (c *Conveyor) LoggingInterceptor(
 		err := setStringToContextMetadata(ctx, strings.ToLower(common.HeaderXRequestID), requestID)
 		if err != nil {
 			c.log.Error("Set string to context metadata error", errors.New(strings.ToLower(common.HeaderXRequestID)))
-			return nil, status.Errorf(codes.Internal, strings.ToLower(common.HeaderXRequestID))
+			return nil, status.Errorf(codes.Internal, "set string to context metadata error")
 		}
 	}
 
@@ -43,7 +43,7 @@ func (c *Conveyor) LoggingInterceptor(
 	_, err := uuid.Parse(requestID)
 	if err != nil {
 		c.log.Error("Parse x-request-id error", err)
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "parse x-request-id error")
 	}
 
 	resp, err := handler(ctx, req)
@@ -56,7 +56,7 @@ func (c *Conveyor) LoggingInterceptor(
 	body, berr := getBodyFromRequest(req)
 	if berr != nil {
 		c.log.Error("Get body error", berr)
-		return nil, status.Errorf(codes.InvalidArgument, berr.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "get body error")
 	}
 
 	c.log.Info(

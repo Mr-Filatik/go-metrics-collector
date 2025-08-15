@@ -35,14 +35,14 @@ func (c *Conveyor) HashingInterceptor(
 	body, err := getBodyFromRequest(req)
 	if err != nil {
 		c.log.Error("Get request body error", err)
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "get request body error")
 	}
 
 	// Рассчитываем хэш на основе содержимого запроса и ключа хэширования.
 	calculatedHash, hashErr := common.HashBytesToString(body, c.hashKey)
 	if hashErr != nil {
 		c.log.Error("Create hash error", hashErr)
-		return nil, status.Errorf(codes.Internal, hashErr.Error())
+		return nil, status.Errorf(codes.Internal, "create hash error")
 	}
 
 	if !common.HashValidateStrings(calculatedHash, hash) {
