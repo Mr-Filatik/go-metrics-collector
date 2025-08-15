@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
@@ -51,7 +52,7 @@ func NewGrpcClient(config *GrpcClientConfig, l logger.Logger) *GrpcClient {
 func (c *GrpcClient) Start(_ context.Context) error {
 	c.log.Info("Start GrpcClient...")
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	conn, connErr := grpc.NewClient(":18080", opts...) // client.url
 	if connErr != nil {
@@ -60,22 +61,22 @@ func (c *GrpcClient) Start(_ context.Context) error {
 
 	c.conn = conn
 	c.metricsServiceClient = myProto.NewMetricsServiceClient(c.conn)
-	c.log.Info("Start GrpcClient is successfull.")
+	c.log.Info("Start GrpcClient is successfull")
 	return nil
 }
 
-func (c *GrpcClient) SendMetric(_ context.Context, m entity.Metrics) error {
+func (c *GrpcClient) SendMetric(_ context.Context, _ entity.Metrics) error {
 	if c.conn == nil {
 		err := fmt.Errorf("GrpcClient: %w", ErrClientNotStarted)
 		c.log.Error("Error in *GrpcClient.SendMetric()", err)
 		return err
 	}
 
-	c.log.Warn("Not implemented *GrpcClient.SendMetric().", nil)
+	c.log.Warn("Not implemented *GrpcClient.SendMetric()", nil)
 	return nil
 }
 
-func (c *GrpcClient) SendMetrics(_ context.Context, ms []entity.Metrics) error {
+func (c *GrpcClient) SendMetrics(ctx context.Context, ms []entity.Metrics) error {
 	if c.conn == nil {
 		err := fmt.Errorf("GrpcClient: %w", ErrClientNotStarted)
 		c.log.Error("Error in *GrpcClient.SendMetrics()", err)
@@ -111,9 +112,9 @@ func (c *GrpcClient) SendMetrics(_ context.Context, ms []entity.Metrics) error {
 		strings.ToLower(common.HeaderXRealIP), c.xRealIP,
 		strings.ToLower(common.HeaderHashSHA256), hashStr,
 	)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	ctxUpd := metadata.NewOutgoingContext(ctx, md)
 
-	_, err := c.metricsServiceClient.UpdateMetrics(ctx, req, grpc.UseCompressor(gzip.Name))
+	_, err := c.metricsServiceClient.UpdateMetrics(ctxUpd, req, grpc.UseCompressor(gzip.Name))
 	if err != nil {
 		c.log.Error("UpdateMetric error", err)
 	}

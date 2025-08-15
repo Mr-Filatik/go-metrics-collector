@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rsa"
 	"errors"
+	"net"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/server/interceptor"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	"github.com/Mr-Filatik/go-metrics-collector/proto"
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc"
 )
 
 // GrpcServer представляет gRPC-сервер приложения.
@@ -18,11 +20,15 @@ type GrpcServer struct {
 	proto.UnimplementedMetricsServiceServer
 	service *service.Service // сервис с основной логикой
 	// conveyor    *middleware.Conveyor // конвейер для middleware
-	log logger.Logger // логгер
+	log           logger.Logger // логгер
+	address       string
+	trustedSubnet string
+	hashKey       string
 }
 
+var _ Server = (*GrpcServer)(nil)
+
 type GrpcServerConfig struct {
-	Logger        logger.Logger
 	PrivateRsaKey *rsa.PrivateKey
 	Service       *service.Service
 	Address       string
@@ -35,15 +41,57 @@ type GrpcServerConfig struct {
 // Параметры:
 //   - ctx: контекст для остановки;
 //   - conf: конфиг сервера.
-func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig) *GrpcServer {
+func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig, log logger.Logger) *GrpcServer {
+	log.Info("GrpcServer creating...")
+
 	srv := &GrpcServer{
-		service: conf.Service,
-		// conveyor: middleware.New(conf.Logger),
-		log: conf.Logger,
+		service:       conf.Service,
+		log:           log,
+		trustedSubnet: conf.TrustedSubnet,
+		address:       conf.Address,
+		hashKey:       conf.HashKey,
 	}
-	// srv.registerMiddlewares(conf.HashKey, conf.PrivateRsaKey, conf.TrustedSubnet)
-	// srv.registerRoutes()
+
+	log.Info("GrpcServer create is successfull")
 	return srv
+}
+
+func (s *GrpcServer) Start(ctx context.Context) error {
+	s.log.Info(
+		"GrpcServer starting...",
+		"address", ":18080",
+	)
+
+	lis, err := net.Listen("tcp", ":18080")
+	if err != nil {
+		s.log.Error("Error listen in gRPC server", err)
+	}
+	conv := interceptor.New(s.trustedSubnet, s.hashKey, s.log)
+
+	var opts []grpc.ServerOption
+	opts = append(opts, grpc.ChainUnaryInterceptor(
+		conv.LoggingInterceptor,
+		conv.TrustingInterceptor,
+		conv.HashingInterceptor,
+	))
+	grpcServ := grpc.NewServer(opts...)
+	proto.RegisterMetricsServiceServer(grpcServ, s)
+	go func() {
+		if err := grpcServ.Serve(lis); err != nil {
+			s.log.Error("Error in GrpcServer", err)
+		}
+	}()
+
+	s.log.Info("GrpcServer start is successfull")
+	return nil
+}
+
+func (s *GrpcServer) Shutdown(ctx context.Context) error {
+	return nil
+}
+
+func (s *GrpcServer) Close() error {
+	return nil
 }
 
 // UpdateMetrics обновление списка метрик.
@@ -54,16 +102,6 @@ func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig) *GrpcServer {
 func (s *GrpcServer) UpdateMetrics(
 	ctx context.Context,
 	req *proto.UpdateMetricsRequest) (*proto.UpdateMetricsResponse, error) {
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		s.log.Info("Not metadata.")
-	}
-	for i := range md {
-		s.log.Info(i)
-		md.Get(i)
-	}
-
 	metr := getMetricsFromProto(req)
 
 	for _, m := range metr {

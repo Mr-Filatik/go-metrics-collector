@@ -3,10 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rsa"
-	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"net/url"
 	"os/signal"
 	"strings"
@@ -19,11 +16,8 @@ import (
 	repositoryPostgres "github.com/Mr-Filatik/go-metrics-collector/internal/repository/postgres"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server"
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
-	"github.com/Mr-Filatik/go-metrics-collector/internal/server/interceptor"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	storage "github.com/Mr-Filatik/go-metrics-collector/internal/storage/file"
-	"github.com/Mr-Filatik/go-metrics-collector/proto"
-	"google.golang.org/grpc"
 
 	// Installing the gzip encoding registers it as an available compressor.
 	// The gRPC will automatically negotiate and use gzip if the client supports it.
@@ -84,85 +78,54 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
+	var mainServer server.Server
+
 	// Создание HTTP сервера
-	servConf := &server.ServerConfig{
+	servConf := &server.HTTPServerConfig{
 		Address:       conf.ServerAddress,
 		Service:       srvc,
 		HashKey:       conf.HashKey,
 		TrustedSubnet: conf.TrustedSubnet,
 		PrivateRsaKey: key,
-		Logger:        log,
 	}
-	serv := server.NewServer(exitCtx, servConf)
-
-	// Запуск HTTP сервера
-	go func() {
-		log.Info(
-			"Start HTTP server",
-			"address", servConf.Address,
-		)
-		if err := serv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("Error in HTTP server", err)
-		}
-		log.Info("Finish HTTP server")
-	}()
+	mainServer = server.NewHTTPServer(exitCtx, servConf, log)
 
 	// Создание gRPC сервера
-	gservConf := &server.GrpcServerConfig{
-		Address:       conf.ServerAddress,
-		Service:       srvc,
-		HashKey:       conf.HashKey,
-		TrustedSubnet: conf.TrustedSubnet,
-		PrivateRsaKey: key,
-		Logger:        log,
+	// servConf := &server.GrpcServerConfig{
+	// 	Address:       conf.ServerAddress,
+	// 	Service:       srvc,
+	// 	HashKey:       conf.HashKey,
+	// 	TrustedSubnet: conf.TrustedSubnet,
+	// 	PrivateRsaKey: key,
+	// }
+	// mainServer = server.NewGrpcServer(exitCtx, servConf, log)
+
+	// Запуск сервера
+	startErr := mainServer.Start(exitCtx)
+	if startErr != nil {
+		log.Error("Server starting error.", startErr)
+		return
 	}
-	gserv := server.NewGrpcServer(exitCtx, gservConf)
-
-	// Запуск gRPC сервера
-	go func() {
-		log.Info(
-			"Start gRPC server",
-			"address", conf.ServerAddress,
-		)
-		lis, err := net.Listen("tcp", ":18080")
-		if err != nil {
-			log.Error("Error listen in gRPC server", err)
-		}
-		conv := interceptor.New(conf.TrustedSubnet, conf.HashKey, log)
-
-		var opts []grpc.ServerOption
-		opts = append(opts, grpc.ChainUnaryInterceptor(
-			conv.LoggingInterceptor,
-			conv.TrustingInterceptor,
-			conv.HashingInterceptor,
-		))
-		grpcServ := grpc.NewServer(opts...)
-		proto.RegisterMetricsServiceServer(grpcServ, gserv)
-		if err := grpcServ.Serve(lis); err != nil {
-			log.Error("Error in gRPC server", err)
-		}
-		log.Info("Finish gRPC server")
-	}()
 
 	// Ожидание сигнала остановки
 	<-exitCtx.Done()
 	exitFn()
 
 	// Запускаем полноценную остановку с таймаутом
-	log.Info("Start shutdown")
+	log.Info("Application shutdown starting...")
 	shutdownCtx, cansel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cansel()
 
-	err := serv.Shutdown(shutdownCtx)
-	if err != nil {
-		log.Error("Shutdown HTTP server error", err)
-		cErr := serv.Close()
-		if cErr != nil {
-			log.Error("Close HTTP server error", cErr)
+	shutdownErr := mainServer.Shutdown(shutdownCtx)
+	if shutdownErr != nil {
+		log.Error("Shutdown server error", shutdownErr)
+		closeErr := mainServer.Close()
+		if closeErr != nil {
+			log.Error("Close server error", closeErr)
 		}
 	}
 
-	log.Info("Finish shutdown")
+	log.Info("Application shutdown is successfull")
 }
 
 func removePortFromURL(input string) (string, error) {

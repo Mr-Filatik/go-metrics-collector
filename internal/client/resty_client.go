@@ -54,30 +54,30 @@ func (c *RestyClient) Start(_ context.Context) error {
 	c.log.Info("Start RestyClient...")
 	c.restyClient = resty.New()
 	c.registerMiddlewares(c.hashKey, c.publicKey)
-	c.log.Info("Start RestyClient is successfull.")
+	c.log.Info("Start RestyClient is successfull")
 	return nil
 }
 
 func (c *RestyClient) SendMetric(_ context.Context, m entity.Metrics) error {
 	if c.restyClient == nil {
 		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
-		c.log.Error("Error in *RestyClient.SendMetric().", err)
+		c.log.Error("Error in *RestyClient.SendMetric()", err)
 		return err
 	}
 
-	c.log.Warn("Not implemented *RestyClient.SendMetric().", nil)
+	c.log.Warn("Not implemented *RestyClient.SendMetric()", nil)
 	return nil
 }
 
-func (c *RestyClient) SendMetrics(_ context.Context, ms []entity.Metrics) error {
+func (c *RestyClient) SendMetrics(ctx context.Context, ms []entity.Metrics) error {
 	if c.restyClient == nil {
 		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
-		c.log.Error("Error in *RestyClient.SendMetrics().", err)
+		c.log.Error("Error in *RestyClient.SendMetrics()", err)
 		return err
 	}
 
 	if len(ms) == 0 {
-		c.log.Warn("Sending metrics is empty.", nil)
+		c.log.Warn("Sending metrics is empty", nil)
 		return nil
 	}
 
@@ -95,6 +95,7 @@ func (c *RestyClient) SendMetrics(_ context.Context, ms []entity.Metrics) error 
 				SetHeader(common.HeaderAcceptEncoding, common.HeaderEncodingValueGZIP).
 				SetHeader(common.HeaderXRealIP, c.xRealIP).
 				SetBody(dat).
+				SetContext(ctx).
 				Post(c.url)
 
 			if err != nil {
@@ -120,11 +121,11 @@ func (c *RestyClient) SendMetrics(_ context.Context, ms []entity.Metrics) error 
 func (c *RestyClient) Close() error {
 	if c.restyClient == nil {
 		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
-		c.log.Error("Error in *RestyClient.Close().", err)
+		c.log.Error("Error in *RestyClient.Close()", err)
 		return err
 	}
 
-	c.log.Warn("Not implemented *RestyClient.Close().", nil)
+	c.log.Warn("Not implemented *RestyClient.Close()", nil)
 	return nil
 }
 
