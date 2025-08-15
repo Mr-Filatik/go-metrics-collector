@@ -91,7 +91,7 @@ func worker(
 				}
 			}
 
-			err := cl.SendMetrics(metrics)
+			err := cl.SendMetrics(ctx, metrics)
 			if err != nil {
 				log.Error("Sending metrics error", err)
 				continue

@@ -1,16 +1,15 @@
 package client
 
 import (
-	"crypto/hmac"
+	"context"
 	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
@@ -21,9 +20,11 @@ import (
 // RestyClient - клиент для отправки запросов к серверу.
 type RestyClient struct {
 	restyClient *resty.Client
+	publicKey   *rsa.PublicKey
 	log         logger.Logger
 	url         string
 	xRealIP     string
+	hashKey     string
 }
 
 var _ Client = (*RestyClient)(nil)
@@ -39,15 +40,92 @@ type RestyClientConfig struct {
 // NewRestyClient создаёт новый экземпляр *RestyClient.
 func NewRestyClient(config *RestyClientConfig, l logger.Logger) *RestyClient {
 	client := &RestyClient{
-		restyClient: resty.New(),
-		url:         config.URL + "/updates/",
-		xRealIP:     config.XRealIP,
-		log:         l,
+		url:       config.URL + "/updates/",
+		xRealIP:   config.XRealIP,
+		log:       l,
+		publicKey: config.PublicKey,
+		hashKey:   config.HashKey,
 	}
 
-	client.registerMiddlewares(config.HashKey, config.PublicKey)
-
 	return client
+}
+
+func (c *RestyClient) Start(_ context.Context) error {
+	c.log.Info("Start RestyClient...")
+	c.restyClient = resty.New()
+	c.registerMiddlewares(c.hashKey, c.publicKey)
+	c.log.Info("Start RestyClient is successfull.")
+	return nil
+}
+
+func (c *RestyClient) SendMetric(_ context.Context, m entity.Metrics) error {
+	if c.restyClient == nil {
+		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
+		c.log.Error("Error in *RestyClient.SendMetric().", err)
+		return err
+	}
+
+	c.log.Warn("Not implemented *RestyClient.SendMetric().", nil)
+	return nil
+}
+
+func (c *RestyClient) SendMetrics(_ context.Context, ms []entity.Metrics) error {
+	if c.restyClient == nil {
+		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
+		c.log.Error("Error in *RestyClient.SendMetrics().", err)
+		return err
+	}
+
+	if len(ms) == 0 {
+		c.log.Warn("Sending metrics is empty.", nil)
+		return nil
+	}
+
+	dat, err := json.Marshal(ms)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %w", err)
+	}
+
+	resp, err := repeater.New[[]byte, *resty.Response](c.log).
+		SetFunc(func(b []byte) (*resty.Response, error) {
+			c.log.Info("Sending metrics", "url", c.url)
+			resp, err := c.restyClient.R().
+				SetHeader(common.HeaderContentType, common.HeaderContentTypeValueApplicationJSON).
+				SetHeader(common.HeaderContentEncoding, common.HeaderEncodingValueGZIP).
+				SetHeader(common.HeaderAcceptEncoding, common.HeaderEncodingValueGZIP).
+				SetHeader(common.HeaderXRealIP, c.xRealIP).
+				SetBody(dat).
+				Post(c.url)
+
+			if err != nil {
+				return resp, errors.New(err.Error())
+			}
+			return resp, nil
+		}).
+		Run(dat)
+
+	if err != nil {
+		return fmt.Errorf("sending metrics error: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		err := errors.New("responce status is " + resp.Status())
+		return fmt.Errorf("responce status code not OK: %w", err)
+	}
+
+	c.log.Debug("Send metrics success", "url", c.url, "status", resp.Status())
+	return nil
+}
+
+func (c *RestyClient) Close() error {
+	if c.restyClient == nil {
+		err := fmt.Errorf("RestyClient: %w", ErrClientNotStarted)
+		c.log.Error("Error in *RestyClient.Close().", err)
+		return err
+	}
+
+	c.log.Warn("Not implemented *RestyClient.Close().", nil)
+	return nil
 }
 
 // registerMiddlewares регистрирует все необходимые middleware для клиента.
@@ -110,15 +188,12 @@ func (c *RestyClient) hashingMiddleware(r *resty.Request, hashKey string) error 
 		return ErrNotByteBody
 	}
 
-	h := hmac.New(sha256.New, []byte(hashKey))
-	_, err := h.Write(byteBody)
+	hashStr, err := common.HashBytesToString(byteBody, hashKey)
 	if err != nil {
-		return fmt.Errorf("hash write error: %w", err)
+		return fmt.Errorf("calculate hash error: %w", err)
 	}
-	hashBytes := h.Sum(nil)
-	hashStr := hex.EncodeToString(hashBytes)
 
-	r.Header.Set(HashHeader, hashStr)
+	r.Header.Set(common.HeaderHashSHA256, hashStr)
 
 	c.log.Debug("HashSHA256 added to request headers")
 	return nil
@@ -126,7 +201,7 @@ func (c *RestyClient) hashingMiddleware(r *resty.Request, hashKey string) error 
 
 // compressingMiddleware сжимает тело запроса.
 func (c *RestyClient) compressingMiddleware(r *resty.Request) error {
-	if !strings.Contains(r.Header.Get(ContentEncodingHeader), EncodingType) {
+	if !strings.Contains(r.Header.Get(common.HeaderContentEncoding), common.HeaderEncodingValueGZIP) {
 		// Сжатие отключено
 		return nil
 	}
@@ -141,13 +216,13 @@ func (c *RestyClient) compressingMiddleware(r *resty.Request) error {
 		return ErrNotByteBody
 	}
 
-	compressedBody, err := compressBody(byteBody)
+	compressedBody, err := common.CompressBytes(byteBody)
 	if err != nil {
 		return fmt.Errorf("compress error: %w", err)
 	}
-	if compressedBody == nil {
-		return fmt.Errorf("compress error: %w", errors.New("compressed body is nil"))
-	}
+	// if compressedBody == nil {
+	// 	return fmt.Errorf("compress error: %w", errors.New("compressed body is nil"))
+	// }
 
 	r.SetBody(compressedBody)
 
@@ -157,12 +232,12 @@ func (c *RestyClient) compressingMiddleware(r *resty.Request) error {
 
 // decompressingMiddleware расжимает тело ответа.
 func (c *RestyClient) decompressingMiddleware(r *resty.Response) error {
-	if !strings.Contains(r.Header().Get(AcceptEncodingHeader), EncodingType) {
+	if !strings.Contains(r.Header().Get(common.HeaderAcceptEncoding), common.HeaderEncodingValueGZIP) {
 		// Сжатие отключено
 		return nil
 	}
 
-	val, err := decompressBody(r.Body())
+	val, err := common.DecompressBytes(r.Body())
 	if err != nil {
 		if err.Error() == "gzip: invalid header" {
 			return fmt.Errorf("decompress error: %w", errors.New("body not compress"))
@@ -226,56 +301,4 @@ func convertHeadersToSlice(headers http.Header) []interface{} {
 	}
 
 	return hdrs
-}
-
-func (c *RestyClient) SendMetric(m entity.Metrics) error {
-	c.log.Warn("SendMetric(m entity.Metrics) not worked", nil)
-	return nil
-}
-
-func (c *RestyClient) SendMetrics(ms []entity.Metrics) error {
-	if len(ms) == 0 {
-		c.log.Warn("Sending metrics is empty", nil)
-		return nil
-	}
-
-	dat, err := json.Marshal(ms)
-	if err != nil {
-		return fmt.Errorf("JSON marshal error: %w", err)
-	}
-
-	resp, err := repeater.New[[]byte, *resty.Response](c.log).
-		SetFunc(func(b []byte) (*resty.Response, error) {
-			c.log.Info("Sending metrics", "url", c.url)
-			resp, err := c.restyClient.R().
-				SetHeader("Content-Type", "application/json").
-				SetHeader(ContentEncodingHeader, EncodingType).
-				SetHeader(AcceptEncodingHeader, EncodingType).
-				SetHeader("X-Real-IP", c.xRealIP).
-				SetBody(dat).
-				Post(c.url)
-
-			if err != nil {
-				return resp, errors.New(err.Error())
-			}
-			return resp, nil
-		}).
-		Run(dat)
-
-	if err != nil {
-		return fmt.Errorf("sending metrics error: %w", err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		err := errors.New("responce status is " + resp.Status())
-		return fmt.Errorf("responce status code not OK: %w", err)
-	}
-
-	c.log.Debug("Send metrics success", "url", c.url, "status", resp.Status())
-	return nil
-}
-
-func (c *RestyClient) Close() error {
-	c.log.Warn("Not implemented *RestyClient.Close().", nil)
-	return nil
 }

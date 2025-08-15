@@ -12,6 +12,7 @@ import (
 	_ "net/http/pprof"
 	"strconv"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/middleware"
@@ -19,10 +20,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Server представляет HTTP-сервер приложения.
+type Server interface {
+	common.Starter
+	common.Shutdowner
+}
+
+// HTTPServer представляет HTTP-сервер приложения.
 // Использует chi как маршрутизатор, service для бизнес-логики,
 // conveyor для обработки данных и logger для логирования.
-type Server struct {
+type HTTPServer struct {
 	router      *chi.Mux             // роутер
 	service     *service.Service     // сервис с основной логикой
 	conveyor    *middleware.Conveyor // конвейер для middleware
@@ -43,8 +49,8 @@ type ServerConfig struct {
 //
 // Параметры:
 //   - conf: конфиг сервера
-func NewServer(ctx context.Context, conf *ServerConfig) *Server {
-	srv := Server{
+func NewServer(ctx context.Context, conf *ServerConfig) *HTTPServer {
+	srv := HTTPServer{
 		Server: http.Server{
 			Addr: conf.Address,
 			BaseContext: func(_ net.Listener) context.Context {
@@ -61,7 +67,7 @@ func NewServer(ctx context.Context, conf *ServerConfig) *Server {
 	return &srv
 }
 
-func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey, ts string) {
+func (s *HTTPServer) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey, ts string) {
 	ms := []middleware.Middleware{
 		func(h http.Handler) http.Handler {
 			return s.conveyor.WithLogging(h)
@@ -86,7 +92,7 @@ func (s *Server) registerMiddlewares(hashKey string, privateKey *rsa.PrivateKey,
 	s.conveyor.RegisterMiddlewares(ms...)
 }
 
-func (s *Server) registerRoutes() {
+func (s *HTTPServer) registerRoutes() {
 	s.router.Mount("/debug", http.DefaultServeMux)
 
 	s.router.Handle("/ping", s.conveyor.Middlewares(http.HandlerFunc(s.Ping)))
@@ -105,7 +111,7 @@ func (s *Server) registerRoutes() {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) Ping(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
 		return
@@ -122,7 +128,7 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
 		return
@@ -141,7 +147,7 @@ func (s *Server) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
 		return
@@ -171,7 +177,7 @@ func (s *Server) UpdateAllMetrics(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) GetMetric(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodGet)
 	if !ok {
 		return
@@ -214,7 +220,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
 		return
@@ -248,7 +254,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
 		return
@@ -276,7 +282,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 // Параметры:
 //   - w: ResponseWriter
 //   - r: запрос
-func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
 	if !ok {
 		return
@@ -377,7 +383,7 @@ func getMetricFromJSON(r *http.Request, validateValue bool) (entity.Metrics, err
 	return metr, nil
 }
 
-func (s *Server) validateRequestMethod(w http.ResponseWriter, current string, needed string) bool {
+func (s *HTTPServer) validateRequestMethod(w http.ResponseWriter, current string, needed string) bool {
 	if current != needed {
 		s.log.Error(
 			"Invalid request",
@@ -392,7 +398,7 @@ func (s *Server) validateRequestMethod(w http.ResponseWriter, current string, ne
 	return true
 }
 
-func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
+func (s *HTTPServer) serverResponceWithJSON(w http.ResponseWriter, v any) {
 	res, err := json.Marshal(v)
 	if err != nil {
 		s.serverResponceInternalServerError(w, err)
@@ -406,17 +412,17 @@ func (s *Server) serverResponceWithJSON(w http.ResponseWriter, v any) {
 	}
 }
 
-func (s *Server) serverResponceBadRequest(w http.ResponseWriter, err error) {
+func (s *HTTPServer) serverResponceBadRequest(w http.ResponseWriter, err error) {
 	s.log.Error("Bad request error (code 400)", err)
 	http.Error(w, "Error: "+err.Error(), http.StatusBadRequest)
 }
 
-func (s *Server) serverResponceNotFound(w http.ResponseWriter, err error) {
+func (s *HTTPServer) serverResponceNotFound(w http.ResponseWriter, err error) {
 	s.log.Error("Bad request error (code 404)", err)
 	http.Error(w, "Error: "+err.Error(), http.StatusNotFound)
 }
 
-func (s *Server) serverResponceInternalServerError(w http.ResponseWriter, err error) {
+func (s *HTTPServer) serverResponceInternalServerError(w http.ResponseWriter, err error) {
 	s.log.Error("Internal server error (code 500)", err)
 	http.Error(w, "Error: "+err.Error(), http.StatusInternalServerError)
 }

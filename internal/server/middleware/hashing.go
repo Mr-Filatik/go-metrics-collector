@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 )
 
 // WithHashValidation добавляет хэширование в middleware.
@@ -19,7 +21,7 @@ import (
 //   - hashKey: ключ хэширования
 func (c *Conveyor) WithHashValidation(next http.Handler, hashKey string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hashFromHeader := r.Header.Get("HashSHA256")
+		hashFromHeader := r.Header.Get(common.HeaderHashSHA256)
 		c.log.Debug("Hash from header", "hash", hashFromHeader)
 		if hashFromHeader != "" {
 			body, err := io.ReadAll(r.Body)
@@ -66,7 +68,7 @@ func (c *Conveyor) WithHashValidation(next http.Handler, hashKey string) http.Ha
 			responseHash := sha256.Sum256(responseBody)
 			responseHashStr := hex.EncodeToString(responseHash[:])
 
-			w.Header().Set("HashSHA256", responseHashStr)
+			w.Header().Set(common.HeaderHashSHA256, responseHashStr)
 		}
 
 		_, cerr := io.Copy(w, wrappedWriter.body)

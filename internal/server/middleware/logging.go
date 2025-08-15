@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 	"github.com/google/uuid"
 	"github.com/urfave/negroni"
 )
@@ -15,11 +16,11 @@ import (
 //   - next: следующий обработчик
 func (c *Conveyor) WithLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Request-Id") == "" {
-			r.Header.Set("X-Request-Id", uuid.New().String())
+		if r.Header.Get(common.HeaderXRequestID) == "" {
+			r.Header.Set(common.HeaderXRequestID, uuid.New().String())
 		}
 		startTime := time.Now().UTC()
-		requestID := r.Header.Get("X-Request-Id")
+		requestID := r.Header.Get(common.HeaderXRequestID)
 
 		lwr := negroni.NewResponseWriter(w)
 

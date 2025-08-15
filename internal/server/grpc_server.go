@@ -9,11 +9,11 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	"github.com/Mr-Filatik/go-metrics-collector/proto"
+	"google.golang.org/grpc/metadata"
 )
 
-// GrpcServer представляет HTTP-сервер приложения.
-// Использует chi как маршрутизатор, service для бизнес-логики,
-// conveyor для обработки данных и logger для логирования.
+// GrpcServer представляет gRPC-сервер приложения.
+// Использует service для бизнес-логики и logger для логирования.
 type GrpcServer struct {
 	proto.UnimplementedMetricsServiceServer
 	service *service.Service // сервис с основной логикой
@@ -33,7 +33,8 @@ type GrpcServerConfig struct {
 // NewGrpcServer создаёт и инициализирует новый экзепляр *GrpcServer.
 //
 // Параметры:
-//   - conf: конфиг сервера
+//   - ctx: контекст для остановки;
+//   - conf: конфиг сервера.
 func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig) *GrpcServer {
 	srv := &GrpcServer{
 		service: conf.Service,
@@ -53,11 +54,15 @@ func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig) *GrpcServer {
 func (s *GrpcServer) UpdateMetrics(
 	ctx context.Context,
 	req *proto.UpdateMetricsRequest) (*proto.UpdateMetricsResponse, error) {
-	s.log.Info("AAAAAAAAAAAAAAA") // прикрутить middlewares
-	// ok := s.validateRequestMethod(w, r.Method, http.MethodPost)
-	// if !ok {
-	// 	return
-	// }
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		s.log.Info("Not metadata.")
+	}
+	for i := range md {
+		s.log.Info(i)
+		md.Get(i)
+	}
 
 	metr := getMetricsFromProto(req)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	_ "net/http/pprof"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/client"
+	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/go-resty/resty/v2"
 )
@@ -34,20 +36,20 @@ func main() {
 	conf := config.Initialize()
 	metrics := metric.New()
 
-	// var key *rsa.PublicKey = nil
-	// if conf.CryptoKeyPath != "" {
-	// 	k, err := crypto.LoadPublicKey(conf.CryptoKeyPath)
-	// 	if err != nil {
-	// 		log.Error("Load private key error", err)
-	// 		return
-	// 	}
-	// 	key = k
-	// }
+	var key *rsa.PublicKey = nil
+	if conf.CryptoKeyPath != "" {
+		k, err := crypto.LoadPublicKey(conf.CryptoKeyPath)
+		if err != nil {
+			log.Error("Load private key error", err)
+			return
+		}
+		key = k
+	}
 
-	// realIP, err := getExternalRealIP()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	realIP, err := getExternalRealIP()
+	if err != nil {
+		panic(err)
+	}
 
 	// Привязка сигналов ОС к контексту
 	exitCtx, exitFn := signal.NotifyContext(
@@ -57,17 +59,31 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
-	// clientConfig := &client.RestyClientConfig{
-	// 	PublicKey: key,
-	// 	URL:       conf.ServerAddress,
-	// 	XRealIP:   realIP,
-	// 	HashKey:   conf.HashKey,
-	// }
-	// cl := client.NewRestyClient(clientConfig, log)
-	clientConfig := &client.GrpcClientConfig{
-		URL: conf.ServerAddress,
+	var mainClient client.Client
+
+	// Создание HTTP клиента
+	clientConfig := &client.RestyClientConfig{
+		PublicKey: key,
+		URL:       conf.ServerAddress,
+		XRealIP:   realIP,
+		HashKey:   conf.HashKey,
 	}
-	cl := client.NewGrpcClient(clientConfig, log)
+	mainClient = client.NewRestyClient(clientConfig, log)
+
+	// Создание gRPC клиента
+	// clientConfig := &client.GrpcClientConfig{
+	// 	URL:     conf.ServerAddress,
+	// 	XRealIP: realIP,
+	// 	HashKey: conf.HashKey,
+	// }
+	// mainClient = client.NewGrpcClient(clientConfig, log)
+
+	startErr := mainClient.Start(exitCtx)
+	if startErr != nil {
+		log.Error("Start client error", startErr)
+		return
+	}
+
 	go updater.Run(exitCtx, metrics, conf.PollInterval)
 	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
@@ -75,7 +91,7 @@ func main() {
 		metrics,
 		conf.ReportInterval,
 		conf.RateLimit,
-		cl,
+		mainClient,
 		log)
 
 	// Ожидание сигнала остановки

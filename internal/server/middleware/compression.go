@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 )
 
 // WithCompressedGzip добавляет сжатие в middleware.
@@ -15,9 +17,10 @@ import (
 //   - next: следующий обработчик
 func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		valueContent := r.Header.Get("Content-Type")
-		isType := strings.Contains(valueContent, "application/json") || strings.Contains(valueContent, "text/html")
-		if isType && strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		valueContent := r.Header.Get(common.HeaderContentType)
+		isType := strings.Contains(valueContent, common.HeaderContentTypeValueApplicationJSON) ||
+			strings.Contains(valueContent, common.HeaderContentTypeValueTextHTML)
+		if isType && strings.Contains(r.Header.Get(common.HeaderContentEncoding), common.HeaderEncodingValueGZIP) {
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
 				c.httpError(w, "Failed to decompress request body", http.StatusBadRequest, err)
@@ -31,9 +34,10 @@ func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 			r.Body = gz
 		}
 
-		valueAccept := r.Header.Get("Accept")
-		isType = strings.Contains(valueAccept, "application/json") || strings.Contains(valueAccept, "text/html")
-		if isType && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		valueAccept := r.Header.Get(common.HeaderAccept)
+		isType = strings.Contains(valueAccept, common.HeaderContentTypeValueApplicationJSON) ||
+			strings.Contains(valueAccept, common.HeaderContentTypeValueTextHTML)
+		if isType && strings.Contains(r.Header.Get(common.HeaderAcceptEncoding), common.HeaderEncodingValueGZIP) {
 			gz := gzip.NewWriter(w)
 			defer func() {
 				if err := gz.Close(); err != nil {
@@ -41,8 +45,8 @@ func (c *Conveyor) WithCompressedGzip(next http.Handler) http.Handler {
 				}
 			}()
 
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Content-Type", valueAccept)
+			w.Header().Set(common.HeaderContentEncoding, common.HeaderEncodingValueGZIP)
+			w.Header().Set(common.HeaderContentType, valueAccept)
 			w = &gzipResponseWriter{Writer: gz, ResponseWriter: w}
 		}
 
