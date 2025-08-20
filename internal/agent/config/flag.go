@@ -6,29 +6,9 @@ import (
 	"os"
 )
 
-// configFlags - структура, содержащая основные флаги приложения.
-type configFlags struct {
-	configPath            string // путь до JSON конфига
-	cryptoKeyPath         string // путь до публичного ключа
-	hashKey               string // ключ хэширования
-	serverAddress         string // адрес сервера
-	pollInterval          int64  // интервал опроса (в секундах)
-	reportInterval        int64  // интервал отправки данных (в секундах)
-	rateLimit             int64  // лимит запросов для агента
-	grpcEnabled           bool   // включать ли поддержку gRPC
-	configPathIsValue     bool
-	cryptoKeyPathIsValue  bool
-	hashKeyIsValue        bool
-	serverAddressIsValue  bool
-	pollIntervalIsValue   bool
-	reportIntervalIsValue bool
-	rateLimitIsValue      bool
-	grpcEnabledIsValue    bool
-}
-
 // getFlagsConfig получает конфиг из указанных аргументов.
-func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
-	config := &configFlags{}
+func getFlagsConfig(fs *flag.FlagSet, args []string) (*configEnvsAndFlags, error) {
+	config := &configEnvsAndFlags{}
 
 	argC := fs.String("c", "", "Path to JSON config file")
 	argConfig := fs.String("config", "", "Path to JSON config file")
@@ -85,40 +65,11 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 }
 
 // getFlagsConfigFromOS получает значения флагов из аргументов запуска приложения в ОС.
-func getFlagsConfigFromOS() (*configFlags, error) {
+func getFlagsConfigFromOS() (*configEnvsAndFlags, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	config, err := getFlagsConfig(fs, os.Args[1:])
 	if err != nil {
 		return nil, fmt.Errorf("get flag config %w", err)
 	}
 	return config, nil
-}
-
-// overrideConfigFromFlags переопределяет основной конфиг новыми значениями.
-func (c *Config) overrideConfigFromFlags(conf *configFlags) {
-	if conf == nil {
-		return
-	}
-
-	if conf.cryptoKeyPathIsValue {
-		c.CryptoKeyPath = conf.cryptoKeyPath
-	}
-	if conf.hashKeyIsValue {
-		c.HashKey = conf.hashKey
-	}
-	if conf.serverAddressIsValue {
-		c.ServerAddress = conf.serverAddress
-	}
-	if conf.pollIntervalIsValue {
-		c.PollInterval = conf.pollInterval
-	}
-	if conf.reportIntervalIsValue {
-		c.ReportInterval = conf.reportInterval
-	}
-	if conf.rateLimitIsValue {
-		c.RateLimit = conf.rateLimit
-	}
-	if conf.grpcEnabledIsValue {
-		c.GrpcEnabled = conf.grpcEnabled
-	}
 }

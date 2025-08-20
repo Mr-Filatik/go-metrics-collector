@@ -19,14 +19,14 @@ func TestCreateAndOverrideConfig(t *testing.T) {
 		pollIntervalIsValue:   true,
 		ServerAddress:         "file address", // не указано true в serverAddressIsValue
 	}
-	flagsConf := &configFlags{
+	flagsConf := &configEnvsAndFlags{
 		cryptoKeyPath:         "flags crypto path",
 		cryptoKeyPathIsValue:  true,
 		reportInterval:        120,
 		reportIntervalIsValue: true,
 		serverAddress:         "flags address", // не указано true в serverAddressIsValue
 	}
-	envsConf := &configEnvs{
+	envsConf := &configEnvsAndFlags{
 		cryptoKeyPath:        "envs crypto path",
 		cryptoKeyPathIsValue: true,
 		serverAddress:        "envs address", // не указано true в serverAddressIsValue
@@ -46,7 +46,7 @@ func TestGetEnvsConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		env      map[string]string
-		expected configEnvs
+		expected configEnvsAndFlags
 	}{
 		{
 			name: "full values",
@@ -59,7 +59,7 @@ func TestGetEnvsConfig(t *testing.T) {
 				"REPORT_INTERVAL": "15",
 				"RATE_LIMIT":      "5",
 			},
-			expected: configEnvs{
+			expected: configEnvsAndFlags{
 				configPath:            "/config.json",
 				configPathIsValue:     true,
 				cryptoKeyPath:         "/keys/public.pem",
@@ -82,7 +82,7 @@ func TestGetEnvsConfig(t *testing.T) {
 				"ADDRESS":       "localhost:9090",
 				"POLL_INTERVAL": "2",
 			},
-			expected: configEnvs{
+			expected: configEnvsAndFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -102,7 +102,7 @@ func TestGetEnvsConfig(t *testing.T) {
 		{
 			name: "empty values",
 			env:  map[string]string{},
-			expected: configEnvs{
+			expected: configEnvsAndFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -158,7 +158,7 @@ func TestGetFlagsConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
-		expected configFlags
+		expected configEnvsAndFlags
 	}{
 		{
 			name: "full values",
@@ -171,7 +171,7 @@ func TestGetFlagsConfig(t *testing.T) {
 				"-r", "15",
 				"-l", "5",
 			},
-			expected: configFlags{
+			expected: configEnvsAndFlags{
 				configPath:            "/config.json",
 				configPathIsValue:     true,
 				cryptoKeyPath:         "/keys/public.pem",
@@ -195,7 +195,7 @@ func TestGetFlagsConfig(t *testing.T) {
 				"-p", "2",
 				"-l", "1",
 			},
-			expected: configFlags{
+			expected: configEnvsAndFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
@@ -215,7 +215,7 @@ func TestGetFlagsConfig(t *testing.T) {
 		{
 			name: "empty values",
 			args: []string{},
-			expected: configFlags{
+			expected: configEnvsAndFlags{
 				configPath:            "",
 				configPathIsValue:     false,
 				cryptoKeyPath:         "",
