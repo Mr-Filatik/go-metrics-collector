@@ -51,7 +51,7 @@ func Initialize() *Config {
 	return config
 }
 
-func createAndOverrideConfig(fileConf *configJSONs, flagsConf *configEnvsAndFlags, envsConf *configEnvsAndFlags) *Config {
+func createAndOverrideConfig(fileConf *configJSONs, flagsConf, envsConf *configEnvsAndFlags) *Config {
 	config := &Config{
 		ServerAddress:  defaultServerAddress,
 		HashKey:        defaultHashKey,
