@@ -5,52 +5,22 @@ import (
 	"testing"
 
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
-	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/repository"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type mockLogger struct {
-	debugCalled   []string
-	infoCalled    []string
-	warningCalled []string
-	errorCalled   []string
-}
-
-func (m *mockLogger) Log(level logger.LogLevel, msg string, keyvals ...interface{}) {
-	m.infoCalled = append(m.infoCalled, msg)
-}
-
-func (m *mockLogger) Debug(msg string, keyvals ...interface{}) {
-	m.debugCalled = append(m.debugCalled, msg)
-}
-
-func (m *mockLogger) Info(msg string, keyvals ...interface{}) {
-	m.infoCalled = append(m.infoCalled, msg)
-}
-
-func (m *mockLogger) Warn(msg string, keyvals ...interface{}) {
-	m.warningCalled = append(m.warningCalled, msg)
-}
-
-func (m *mockLogger) Error(msg string, err error, keyvals ...interface{}) {
-	m.errorCalled = append(m.errorCalled, msg)
-}
-
-func (m *mockLogger) Close() {
-	//
-}
-
 func TestNew(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 
 	repo := New("test-conn", mockLog)
 
 	require.NotNil(t, repo)
 	assert.Equal(t, "test-conn", repo.dbConn)
 	assert.Empty(t, repo.datas)
-	assert.Contains(t, mockLog.infoCalled, "Create MemoryRepository")
+	log := mockLog.GetLastLog()
+	assert.Contains(t, log.Message, "Create MemoryRepository")
 }
 
 func TestPing(t *testing.T) {
@@ -63,7 +33,7 @@ func TestPing(t *testing.T) {
 func TestGetAll_Empty(t *testing.T) {
 	repo := &MemoryRepository{
 		datas: make([]entity.Metrics, 0),
-		log:   &mockLogger{},
+		log:   &testutil.MockLogger{},
 	}
 	ctx := context.Background()
 
@@ -79,7 +49,7 @@ func TestGetAll_WithData(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	repo := &MemoryRepository{
 		datas: testData,
 		log:   mockLog,
@@ -89,7 +59,8 @@ func TestGetAll_WithData(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
 	assert.Equal(t, testData, result)
-	assert.Contains(t, mockLog.debugCalled, "Query all metrics from MemRepository")
+	log := mockLog.GetLastLog()
+	assert.Contains(t, log.Message, "Query all metrics from MemRepository")
 }
 
 func TestGetByID_Found(t *testing.T) {
@@ -98,7 +69,7 @@ func TestGetByID_Found(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	repo := &MemoryRepository{
 		datas: testData,
 		log:   mockLog,
@@ -109,13 +80,14 @@ func TestGetByID_Found(t *testing.T) {
 	assert.Equal(t, "metric1", result.ID)
 	assert.Equal(t, "gauge", result.MType)
 	assert.Equal(t, floatPtr(1.5), result.Value)
-	assert.Contains(t, mockLog.debugCalled, "Getting metric from MemRepository")
+	log := mockLog.GetLastLog()
+	assert.Contains(t, log.Message, "Getting metric from MemRepository")
 }
 
 func TestGetByID_NotFound(t *testing.T) {
 	repo := &MemoryRepository{
 		datas: []entity.Metrics{},
-		log:   &mockLogger{},
+		log:   &testutil.MockLogger{},
 	}
 	ctx := context.Background()
 
@@ -126,7 +98,7 @@ func TestGetByID_NotFound(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	repo := &MemoryRepository{
 		datas: make([]entity.Metrics, 0),
 		log:   mockLog,
@@ -144,7 +116,8 @@ func TestCreate(t *testing.T) {
 	assert.Equal(t, "new_metric", id)
 	assert.Len(t, repo.datas, 1)
 	assert.Equal(t, newMetric, repo.datas[0])
-	assert.Contains(t, mockLog.debugCalled, "Creating a new metric in MemRepository")
+	log := mockLog.GetLastLog()
+	assert.Contains(t, log.Message, "Creating a new metric in MemRepository")
 }
 
 func TestUpdate_Existing(t *testing.T) {
@@ -155,7 +128,7 @@ func TestUpdate_Existing(t *testing.T) {
 	}
 	repo := &MemoryRepository{
 		datas: []entity.Metrics{existing},
-		log:   &mockLogger{},
+		log:   &testutil.MockLogger{},
 	}
 
 	updated := entity.Metrics{
@@ -177,7 +150,7 @@ func TestUpdate_Existing(t *testing.T) {
 func TestUpdate_NotFound(t *testing.T) {
 	repo := &MemoryRepository{
 		datas: []entity.Metrics{},
-		log:   &mockLogger{},
+		log:   &testutil.MockLogger{},
 	}
 	ctx := context.Background()
 
@@ -196,7 +169,7 @@ func TestRemove(t *testing.T) {
 			{ID: "metric1", MType: "gauge", Value: floatPtr(1.0)},
 			{ID: "metric2", MType: "counter", Delta: intPtr(10)},
 		},
-		log: &mockLogger{},
+		log: &testutil.MockLogger{},
 	}
 
 	ctx := context.Background()
@@ -212,7 +185,7 @@ func TestRemove_NonExistent(t *testing.T) {
 		datas: []entity.Metrics{
 			{ID: "metric1", MType: "gauge", Value: floatPtr(1.0)},
 		},
-		log: &mockLogger{},
+		log: &testutil.MockLogger{},
 	}
 
 	ctx := context.Background()

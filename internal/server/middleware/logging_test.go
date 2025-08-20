@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWithLogging_RequestID_Generated(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
@@ -32,7 +33,7 @@ func TestWithLogging_RequestID_Generated(t *testing.T) {
 }
 
 func TestWithLogging_RequestID_Exists(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	existingID := "test-123"
@@ -51,7 +52,7 @@ func TestWithLogging_RequestID_Exists(t *testing.T) {
 }
 
 func TestWithLogging_LogsCorrectFields(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(`{"value": 42}`))
@@ -69,24 +70,26 @@ func TestWithLogging_LogsCorrectFields(t *testing.T) {
 
 	handler.ServeHTTP(rec, req)
 
-	assert.Equal(t, 1, len(mockLog.infoCalled))
-	assert.Contains(t, mockLog.infoCalled[0], "request_id")
-	assert.Contains(t, mockLog.infoCalled[0], "req-123")
-	assert.Contains(t, mockLog.infoCalled[0], "request_method")
-	assert.Contains(t, mockLog.infoCalled[0], "POST")
-	assert.Contains(t, mockLog.infoCalled[0], "request_uri")
-	assert.Contains(t, mockLog.infoCalled[0], "/update")
-	assert.Contains(t, mockLog.infoCalled[0], "status")
-	assert.Contains(t, mockLog.infoCalled[0], "200")
-	assert.Contains(t, mockLog.infoCalled[0], "content_lenght")
-	assert.Contains(t, mockLog.infoCalled[0], "16")
+	logs := mockLog.GetAllLogs()
+	log := mockLog.GetLastLog()
+	assert.Equal(t, 1, len(logs))
+	assert.Contains(t, log.Keyvals, "request_id")
+	assert.Contains(t, log.Keyvals, "req-123")
+	assert.Contains(t, log.Keyvals, "request_method")
+	assert.Contains(t, log.Keyvals, "POST")
+	assert.Contains(t, log.Keyvals, "request_uri")
+	assert.Contains(t, log.Keyvals, "/update")
+	assert.Contains(t, log.Keyvals, "status")
+	assert.Contains(t, log.Keyvals, 200)
+	assert.Contains(t, log.Keyvals, "content_lenght")
+	assert.Contains(t, log.Keyvals, 16)
 
-	assert.Contains(t, mockLog.infoCalled[0], "request_duration")
-	assert.Contains(t, mockLog.infoCalled[0], "request_time")
+	assert.Contains(t, log.Keyvals, "request_duration")
+	assert.Contains(t, log.Keyvals, "request_time")
 }
 
 func TestWithLogging_DefaultStatus(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
@@ -104,7 +107,7 @@ func TestWithLogging_DefaultStatus(t *testing.T) {
 }
 
 func TestWithLogging_ContentLength(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	req := httptest.NewRequest(http.MethodGet, "/data", http.NoBody)

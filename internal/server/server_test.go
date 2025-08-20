@@ -40,7 +40,7 @@ func TestGetAllMetrics(t *testing.T) {
 	repo := repository.New("", log)
 	// stor := storage.New("", log)
 	stor := service.New(repo, nil, 0, log)
-	serv := &Server{
+	serv := &HTTPServer{
 		service: stor,
 		log:     log,
 	}
@@ -98,7 +98,7 @@ func TestGetMetric(t *testing.T) {
 	repo := repository.New("", log)
 	// stor := storage.New("", log)
 	stor := service.New(repo, nil, 0, log)
-	serv := &Server{
+	serv := &HTTPServer{
 		service: stor,
 		log:     log,
 	}
@@ -158,7 +158,7 @@ func TestGetMetricJSON(t *testing.T) {
 	repo := repository.New("", log)
 	// stor := storage.New("", log)
 	stor := service.New(repo, nil, 0, log)
-	serv := &Server{
+	serv := &HTTPServer{
 		service: stor,
 		log:     log,
 	}
@@ -216,7 +216,7 @@ func TestUpdateMetric(t *testing.T) {
 	repo := repository.New("", log)
 	// stor := storage.New("", log)
 	stor := service.New(repo, nil, 0, log)
-	serv := &Server{
+	serv := &HTTPServer{
 		service: stor,
 		log:     log,
 	}

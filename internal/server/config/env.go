@@ -13,16 +13,20 @@ type configEnvs struct {
 	hashKey              string // ключ хэширования
 	serverAddress        string // адрес сервера
 	storagePath          string // путь до файла хранилища (относительный)
+	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	grpcEnabled          bool   // включать ли поддержку gRPC
 	configPathIsValue    bool
 	connStringIsValue    bool
 	cryptoKeyPathIsValue bool
 	hashKeyIsValue       bool
 	serverAddressIsValue bool
 	storagePathIsValue   bool
+	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
+	grpcEnabledIsValue   bool
 }
 
 // envReader — интерфейс для чтения переменных окружения.
@@ -68,6 +72,12 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 		config.storagePathIsValue = true
 	}
 
+	envTrustedSubnet, ok := getenv("TRUSTED_SUBNET")
+	if ok && envTrustedSubnet != "" {
+		config.trustedSubnet = envTrustedSubnet
+		config.trustedSubnetIsValue = true
+	}
+
 	envReportInterval, ok := getenv("STORE_INTERVAL")
 	if ok && envReportInterval != "" {
 		if val, err := strconv.ParseInt(envReportInterval, 10, 64); err == nil {
@@ -81,6 +91,14 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 		if val, err := strconv.ParseBool(envRestore); err == nil {
 			config.restore = val
 			config.restoreIsValue = true
+		}
+	}
+
+	envGrpcEnabled, ok := getenv("GRPC_ENABLED")
+	if ok && envGrpcEnabled != "" {
+		if val, err := strconv.ParseBool(envGrpcEnabled); err == nil {
+			config.grpcEnabled = val
+			config.grpcEnabledIsValue = true
 		}
 	}
 
@@ -118,10 +136,16 @@ func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
 	if conf.storagePathIsValue {
 		c.FileStoragePath = conf.storagePath
 	}
+	if conf.trustedSubnetIsValue {
+		c.TrustedSubnet = conf.trustedSubnet
+	}
 	if conf.storeIntervalIsValue {
 		c.StoreInterval = conf.storeInterval
 	}
 	if conf.restoreIsValue {
 		c.Restore = conf.restore
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

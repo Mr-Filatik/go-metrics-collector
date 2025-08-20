@@ -14,6 +14,8 @@ type LogLevel = logger.LogLevel
 const (
 	LevelDebug = logger.LevelDebug // уровень логирования debug
 	LevelInfo  = logger.LevelInfo  // уровень логирования info
+	LevelWarn  = logger.LevelWarn  // уровень логирования warning
+	LevelError = logger.LevelError // уровень логирования error
 )
 
 // ZapSugarLogger хранит информацию о логгере.
@@ -76,6 +78,24 @@ func (l *ZapSugarLogger) Debug(message string, keysAndValues ...interface{}) {
 func (l *ZapSugarLogger) Info(message string, keysAndValues ...interface{}) {
 	if LevelInfo >= l.minLogLevel {
 		l.logger.Infow(message, keysAndValues...)
+	}
+}
+
+// Warn логирует сообщение и параметры в уровне warning.
+// Дополнительно может логировать причину ошибки в поле reason.
+//
+// Параметры:
+//   - message: сообщение
+//   - err: ошибка (необязательное поле)
+//   - keysAndValues: дополнительные пары ключ-значение
+func (l *ZapSugarLogger) Warn(message string, err error, keysAndValues ...interface{}) {
+	if LevelInfo >= l.minLogLevel {
+		if err == nil {
+			l.logger.Infow(message, keysAndValues...)
+			return
+		}
+		addKeysAndValues := append([]interface{}{"reason", err.Error()}, keysAndValues...)
+		l.logger.Infow(message, addKeysAndValues...)
 	}
 }
 

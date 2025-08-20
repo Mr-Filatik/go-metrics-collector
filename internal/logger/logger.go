@@ -7,30 +7,45 @@ type LogLevel uint32
 
 // Константы - уровни логирования.
 const (
-	LevelDebug LogLevel = 1 // уровень логирования debug
-	LevelInfo  LogLevel = 2 // уровень логирования info
-	LevelError LogLevel = 3 // уровень логирования error
+	LevelDebug LogLevel = iota // уровень логирования debug
+	LevelInfo                  // уровень логирования info
+	LevelWarn                  // уровень логирования warning
+	LevelError                 // уровень логирования error
 )
 
 // Logger описывает интерфейс для всех логгеров используемых в проекте.
 type Logger interface {
-	Log(level LogLevel, message string, keysAndValues ...interface{}) // общий метод логирования
-	Debug(message string, keysAndValues ...interface{})               // логирование с уровнем debug
-	Info(message string, keysAndValues ...interface{})                // логирование с уровнем info
-	Error(message string, err error, keysAndValues ...interface{})    // логирование с уровнем error
-	Close()                                                           // закрытие ресурсов связанных с логгером
+	// Log - универсальный метод логирования.
+	Log(level LogLevel, message string, keysAndValues ...interface{})
+
+	// Debug - логирование с уровнем debug.
+	Debug(message string, keysAndValues ...interface{})
+
+	// Info - логирование с уровнем info.
+	Info(message string, keysAndValues ...interface{})
+
+	// Warn - логирование с уровнем warn и возможной (некритичной) ошибкой.
+	Warn(message string, err error, keysAndValues ...interface{})
+
+	// Error - логирование с уровнем error и критичной ошибкой
+	Error(message string, err error, keysAndValues ...interface{})
+
+	// Close - закрытие ресурсов связанных с логгером
+	Close()
 }
 
 // GetLevelName преобразует уровень логирования в строку.
 //
 // Параметры:
-//   - logLevel: уровень логирования
+//   - logLevel: уровень логирования.
 func GetLevelName(logLevel LogLevel) string {
 	switch logLevel {
 	case LevelDebug:
 		return "debug"
 	case LevelInfo:
 		return "info"
+	case LevelWarn:
+		return "warning"
 	case LevelError:
 		return "error"
 	default:

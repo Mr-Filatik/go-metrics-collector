@@ -5,8 +5,8 @@ import (
 	"strconv"
 )
 
-// configEnvs - структура, содержащая основные переменные окружения для приложения.
-type configEnvs struct {
+// configEnvsAndFlags - структура, содержащая основные переменные окружения для приложения.
+type configEnvsAndFlags struct {
 	configPath            string // путь до JSON конфига
 	cryptoKeyPath         string // путь до публичного ключа
 	hashKey               string // ключ хэширования
@@ -14,6 +14,7 @@ type configEnvs struct {
 	pollInterval          int64  // интервал опроса (в секундах)
 	reportInterval        int64  // интервал отправки данных (в секундах)
 	rateLimit             int64  // лимит запросов для агента
+	grpcEnabled           bool   // включать ли поддержку gRPC
 	configPathIsValue     bool
 	cryptoKeyPathIsValue  bool
 	hashKeyIsValue        bool
@@ -21,14 +22,15 @@ type configEnvs struct {
 	pollIntervalIsValue   bool
 	reportIntervalIsValue bool
 	rateLimitIsValue      bool
+	grpcEnabledIsValue    bool
 }
 
 // envReader — интерфейс для чтения переменных окружения.
 type envReader func(key string) (string, bool)
 
 // getEnvsConfig получает значения из универсального хранилища.
-func getEnvsConfig(getenv envReader) *configEnvs {
-	config := &configEnvs{}
+func getEnvsConfig(getenv envReader) *configEnvsAndFlags {
+	config := &configEnvsAndFlags{}
 
 	envConfig, ok := getenv("CONFIG")
 	if ok && envConfig != "" {
@@ -78,11 +80,19 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 		}
 	}
 
+	envGrpcEnabled, ok := getenv("GRPC_ENABLED")
+	if ok && envGrpcEnabled != "" {
+		if val, err := strconv.ParseBool(envGrpcEnabled); err == nil {
+			config.grpcEnabled = val
+			config.grpcEnabledIsValue = true
+		}
+	}
+
 	return config
 }
 
 // getEnvsConfigFromOS получает значения из переменных окружения.
-func getEnvsConfigFromOS() *configEnvs {
+func getEnvsConfigFromOS() *configEnvsAndFlags {
 	return getEnvsConfig(func(key string) (string, bool) {
 		value, ok := os.LookupEnv(key)
 		return value, ok
@@ -90,7 +100,7 @@ func getEnvsConfigFromOS() *configEnvs {
 }
 
 // overrideConfigFromEnvs переопределяет основной конфиг новыми значениями.
-func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
+func (c *Config) overrideConfigFromEnvsAndFlags(conf *configEnvsAndFlags) {
 	if conf == nil {
 		return
 	}
@@ -112,5 +122,8 @@ func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
 	}
 	if conf.rateLimitIsValue {
 		c.RateLimit = conf.rateLimit
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

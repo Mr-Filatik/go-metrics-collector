@@ -10,8 +10,10 @@ const (
 	defaultFileStoragePath string = "../../temp_metrics.json" // путь до файла хранилища (относительный)
 	// Флаг, указывающий загружать ли данные из хранилища при старте приложения.
 	defaultRestore          bool   = false
-	defaultConnectionString string = "" // строка подключения к базе данных
-	defaultCryptoKeyPath    string = "" // путь до приватного ключа
+	defaultConnectionString string = ""    // строка подключения к базе данных
+	defaultCryptoKeyPath    string = ""    // путь до приватного ключа
+	defaultTrustedSubnet    string = ""    // разрешённые подсети
+	defaultGrpcEnabled      bool   = false // включать ли поддержку gRPC
 )
 
 // Config - структура, содержащая основные параметры приложения.
@@ -21,8 +23,10 @@ type Config struct {
 	CryptoKeyPath    string // Путь до приватного ключа
 	FileStoragePath  string // Путь до файла хранилища (относительный)
 	ConnectionString string // Строка подключения к базе данных
+	TrustedSubnet    string // Разрешённые подсети
 	StoreInterval    int64  // Интервал сохранения данных в хранилище (в секундах)
 	Restore          bool   // Флаг, указывающий загружать ли данные из хранилища при старте приложения
+	GrpcEnabled      bool   // Bключать ли поддержку gRPC
 }
 
 // Initialize создаёт и иницализирует объект *Config.
@@ -56,8 +60,10 @@ func createAndOverrideConfig(fileConf *configJSONs, flagsConf *configFlags, envs
 		CryptoKeyPath:    defaultCryptoKeyPath,
 		StoreInterval:    defaultStoreInterval,
 		FileStoragePath:  defaultFileStoragePath,
+		TrustedSubnet:    defaultTrustedSubnet,
 		ConnectionString: defaultConnectionString,
 		Restore:          defaultRestore,
+		GrpcEnabled:      defaultGrpcEnabled,
 	}
 
 	config.overrideConfigFromJSONs(fileConf)

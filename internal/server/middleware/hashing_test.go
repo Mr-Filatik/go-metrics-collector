@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ func calculateHash(body []byte, key string) string {
 }
 
 func TestWithHashValidation_ValidRequestHash(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	hashKey := "mysecret"
@@ -44,7 +45,7 @@ func TestWithHashValidation_ValidRequestHash(t *testing.T) {
 }
 
 func TestWithHashValidation_InvalidRequestHash(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	hashKey := "mysecret"
@@ -68,7 +69,7 @@ func TestWithHashValidation_InvalidRequestHash(t *testing.T) {
 }
 
 func TestWithHashValidation_NoHash(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	hashKey := "mysecret"
@@ -92,7 +93,7 @@ func TestWithHashValidation_NoHash(t *testing.T) {
 }
 
 func TestWithHashValidation_ResponseSigned(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	hashKey := "mysecret"
@@ -121,7 +122,7 @@ func TestWithHashValidation_ResponseSigned(t *testing.T) {
 }
 
 func TestWithHashValidation_EmptyBodyWithHash(t *testing.T) {
-	mockLog := &mockLogger{}
+	mockLog := &testutil.MockLogger{}
 	conveyor := New(mockLog)
 
 	hashKey := "mysecret"

@@ -12,8 +12,10 @@ import (
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/metric"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/reporter"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/agent/updater"
+	"github.com/Mr-Filatik/go-metrics-collector/internal/client"
 	crypto "github.com/Mr-Filatik/go-metrics-collector/internal/crypto/rsa"
 	logger "github.com/Mr-Filatik/go-metrics-collector/internal/logger/zap/sugar"
+	"github.com/go-resty/resty/v2"
 )
 
 // go run -ldflags "-X main.buildVersion=v2.0.0 -X main.buildDate=2025-07-07 -X main.buildCommit=98d1d98".
@@ -44,6 +46,11 @@ func main() {
 		key = k
 	}
 
+	realIP, err := getExternalRealIP()
+	if err != nil {
+		panic(err)
+	}
+
 	// Привязка сигналов ОС к контексту
 	exitCtx, exitFn := signal.NotifyContext(
 		context.Background(),
@@ -52,16 +59,43 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
+	var mainClient client.Client
+
+	// Создание HTTP клиента
+	clientConfig := &client.RestyClientConfig{
+		PublicKey: key,
+		URL:       conf.ServerAddress,
+		XRealIP:   realIP,
+		HashKey:   conf.HashKey,
+	}
+	mainClient = client.NewRestyClient(clientConfig, log)
+
+	// Создание gRPC клиента
+	if conf.GrpcEnabled {
+		addConfig := &client.GrpcClientConfig{
+			URL:     conf.ServerAddress,
+			XRealIP: realIP,
+			HashKey: conf.HashKey,
+		}
+		addClient := client.NewGrpcClient(addConfig, log)
+
+		mainClient = client.NewAllClient(mainClient, addClient)
+	}
+
+	startErr := mainClient.Start(exitCtx)
+	if startErr != nil {
+		log.Error("Start client error", startErr)
+		return
+	}
+
 	go updater.Run(exitCtx, metrics, conf.PollInterval)
 	go updater.RunMemory(exitCtx, metrics, conf.PollInterval)
 	go reporter.Run(
 		exitCtx,
 		metrics,
-		conf.ServerAddress,
 		conf.ReportInterval,
-		conf.HashKey,
 		conf.RateLimit,
-		key,
+		mainClient,
 		log)
 
 	// Ожидание сигнала остановки
@@ -69,4 +103,15 @@ func main() {
 	exitFn()
 
 	log.Info("Finish agent shutdown")
+}
+
+func getExternalRealIP() (string, error) {
+	cl := resty.New()
+
+	resp, err := cl.R().Get("https://api.ipify.org")
+	if err != nil {
+		return "", fmt.Errorf("connect error: %w", err)
+	}
+
+	return string(resp.Body()), nil
 }

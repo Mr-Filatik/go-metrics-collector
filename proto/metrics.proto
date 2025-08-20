@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package metrics;
+option go_package = "github.com/Mr-Filatik/go-metrics-collector/internal/server/proto";
+
+// Метрика
+message Metric {
+  string id = 1;
+  string mtype = 2; // "gauge" или "counter"
+  optional double value = 3;
+  optional int64 delta = 4;
+}
+
+// Запрос на обновление метрики
+message UpdateMetricsRequest {
+  repeated Metric metrics = 1;
+}
+
+// Ответ с обновлённой метрикой
+message UpdateMetricsResponse {
+  // Metric metric = 1;
+}
+
+// Сервис для работы с метриками
+service MetricsService {
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+}

@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rsa"
-	"errors"
 	"fmt"
-	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
@@ -18,6 +16,10 @@ import (
 	config "github.com/Mr-Filatik/go-metrics-collector/internal/server/config"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/service"
 	storage "github.com/Mr-Filatik/go-metrics-collector/internal/storage/file"
+
+	// Installing the gzip encoding registers it as an available compressor.
+	// The gRPC will automatically negotiate and use gzip if the client supports it.
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 // go run -ldflags "-X main.buildVersion=v2.0.0 -X main.buildDate=2025-07-07 -X main.buildCommit=98d1d98".
@@ -74,39 +76,82 @@ func main() {
 		syscall.SIGQUIT)
 	defer exitFn()
 
-	// Запуск сервера
-	serv := server.NewServer(exitCtx, conf.ServerAddress, srvc, conf.HashKey, key, log)
-	go func() {
-		log.Info(
-			"Start server",
-			"endpoint", conf.ServerAddress,
-		)
-		if err := serv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("Error server", err)
+	var mainServer server.Server
+
+	// Создание и запуск HTTP сервера
+	servConf := &server.HTTPServerConfig{
+		Address:       conf.ServerAddress,
+		Service:       srvc,
+		HashKey:       conf.HashKey,
+		TrustedSubnet: conf.TrustedSubnet,
+		PrivateRsaKey: key,
+	}
+	mainServer = server.NewHTTPServer(exitCtx, servConf, log)
+
+	startErr := mainServer.Start(exitCtx)
+	if startErr != nil {
+		log.Error("Server starting error.", startErr)
+		return
+	}
+
+	// Создание и запуск gRPC сервера
+	var grpcServer *server.GrpcServer
+
+	if conf.GrpcEnabled {
+		grpcConf := &server.GrpcServerConfig{
+			Address:       conf.ServerAddress,
+			Service:       srvc,
+			HashKey:       conf.HashKey,
+			TrustedSubnet: conf.TrustedSubnet,
+			PrivateRsaKey: key,
 		}
-		log.Info(
-			"Finish server",
-			"endpoint", conf.ServerAddress,
-		)
-	}()
+		grpcServer = server.NewGrpcServer(exitCtx, grpcConf, log)
+
+		gStartErr := grpcServer.Start(exitCtx)
+		if gStartErr != nil {
+			log.Error("Server starting error.", gStartErr)
+			return
+		}
+	}
 
 	// Ожидание сигнала остановки
 	<-exitCtx.Done()
 	exitFn()
 
 	// Запускаем полноценную остановку с таймаутом
-	log.Info("Start server shutdown")
+	log.Info("Application shutdown starting...")
 	shutdownCtx, cansel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cansel()
 
-	err := serv.Shutdown(shutdownCtx)
-	if err != nil {
-		log.Error("Shutdown server error", err)
-		cErr := serv.Close()
-		if cErr != nil {
-			log.Error("Close server error", cErr)
+	go func() {
+		if conf.GrpcEnabled {
+			gshutdownErr := grpcServer.Shutdown(shutdownCtx)
+			if gshutdownErr != nil {
+				log.Error("Shutdown GRPCserver error", gshutdownErr)
+			}
+		}
+	}()
+
+	go func() {
+		shutdownErr := mainServer.Shutdown(shutdownCtx)
+		if shutdownErr != nil {
+			log.Error("Shutdown server error", shutdownErr)
+		}
+	}()
+
+	<-shutdownCtx.Done()
+
+	if conf.GrpcEnabled {
+		closeErr := grpcServer.Close()
+		if closeErr != nil {
+			log.Error("Close server error", closeErr)
 		}
 	}
 
-	log.Info("Finish server shutdown")
+	closeErr := mainServer.Close()
+	if closeErr != nil {
+		log.Error("Close server error", closeErr)
+	}
+
+	log.Info("Application shutdown is successfull")
 }

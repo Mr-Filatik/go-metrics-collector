@@ -14,16 +14,20 @@ type configFlags struct {
 	hashKey              string // ключ хэширования
 	serverAddress        string // адрес сервера
 	storagePath          string // путь до файла хранилища (относительный)
+	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	grpcEnabled          bool   // включать ли поддержку gRPC
 	configPathIsValue    bool
 	connStringIsValue    bool
 	cryptoKeyPathIsValue bool
 	hashKeyIsValue       bool
 	serverAddressIsValue bool
 	storagePathIsValue   bool
+	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
+	grpcEnabledIsValue   bool
 }
 
 // getFlagsConfig получает конфиг из указанных аргументов.
@@ -37,8 +41,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	argK := fs.String("k", "", "Hash key")
 	argA := fs.String("a", "", "HTTP server endpoint")
 	argF := fs.String("f", "", "Path to file")
+	argT := fs.String("t", "", "Trusted subnet")
 	argI := fs.Int64("i", 0, "Interval in seconds to save data")
 	argR := fs.Bool("r", false, "Loading data when the application starts")
+	argG := fs.Bool("g", false, "gRPC enabled")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, fmt.Errorf("parse argument %w", err)
@@ -72,6 +78,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 		config.storagePath = *argF
 		config.storagePathIsValue = true
 	}
+	if argT != nil && *argT != "" {
+		config.trustedSubnet = *argT
+		config.trustedSubnetIsValue = true
+	}
 	if argI != nil && *argI != 0 {
 		config.storeInterval = *argI
 		config.storeIntervalIsValue = true
@@ -79,6 +89,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	if argR != nil && *argR {
 		config.restore = *argR
 		config.restoreIsValue = true
+	}
+	if argG != nil {
+		config.grpcEnabled = *argG
+		config.grpcEnabledIsValue = true
 	}
 
 	return config, nil
@@ -117,10 +131,16 @@ func (c *Config) overrideConfigFromFlags(conf *configFlags) {
 	if conf.storagePathIsValue {
 		c.FileStoragePath = conf.storagePath
 	}
+	if conf.trustedSubnetIsValue {
+		c.TrustedSubnet = conf.trustedSubnet
+	}
 	if conf.storeIntervalIsValue {
 		c.StoreInterval = conf.storeInterval
 	}
 	if conf.restoreIsValue {
 		c.Restore = conf.restore
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

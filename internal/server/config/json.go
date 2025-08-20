@@ -14,12 +14,14 @@ type configJSONs struct {
 	CryptoKeyPath        string `json:"crypto_key,omitempty"`
 	ServerAddress        string `json:"address,omitempty"`
 	StoragePath          string `json:"store_file,omitempty"`
+	TrustedSubnet        string `json:"trusted_subnet,omitempty"`
 	StoreInterval        int64  `json:"store_interval,omitempty"`
 	Restore              bool   `json:"restore,omitempty"`
 	connStringIsValue    bool   `json:"-"`
 	cryptoKeyPathIsValue bool   `json:"-"`
 	serverAddressIsValue bool   `json:"-"`
 	storagePathIsValue   bool   `json:"-"`
+	trustedSubnetIsValue bool   `json:"-"`
 	storeIntervalIsValue bool   `json:"-"`
 	restoreIsValue       bool   `json:"-"`
 }
@@ -53,6 +55,10 @@ func getJSONConfig(r io.Reader) (*configJSONs, error) {
 	if c.StoragePath != "" {
 		config.StoragePath = c.StoragePath
 		config.storagePathIsValue = true
+	}
+	if c.TrustedSubnet != "" {
+		config.TrustedSubnet = c.TrustedSubnet
+		config.trustedSubnetIsValue = true
 	}
 	if c.StoreInterval != 0 {
 		config.StoreInterval = c.StoreInterval
@@ -100,6 +106,9 @@ func (c *Config) overrideConfigFromJSONs(conf *configJSONs) {
 	}
 	if conf.storagePathIsValue {
 		c.FileStoragePath = conf.StoragePath
+	}
+	if conf.trustedSubnetIsValue {
+		c.TrustedSubnet = conf.TrustedSubnet
 	}
 	if conf.storeIntervalIsValue {
 		c.StoreInterval = conf.StoreInterval
