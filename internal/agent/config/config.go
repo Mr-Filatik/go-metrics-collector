@@ -10,6 +10,7 @@ const (
 	defaultReportInterval int64  = 10               // интервал отправки данных (в секундах)
 	defaultRateLimit      int64  = 1                // лимит запросов для агента
 	defaultCryptoKeyPath  string = ""               // путь до публичного ключа
+	defaultGrpcEnabled    bool   = false            // включать ли поддержку gRPC
 )
 
 // Config - структура, содержащая основные параметры приложения.
@@ -20,6 +21,7 @@ type Config struct {
 	PollInterval   int64  // Интервал опроса (в секундах)
 	ReportInterval int64  // Интервал отправки данных (в секундах)
 	RateLimit      int64  // Лимит запросов для агента
+	GrpcEnabled    bool   // Bключать ли поддержку gRPC
 }
 
 // Initialize создаёт и иницализирует объект *Config.
@@ -57,6 +59,7 @@ func createAndOverrideConfig(fileConf *configJSONs, flagsConf *configFlags, envs
 		PollInterval:   defaultPollInterval,
 		ReportInterval: defaultReportInterval,
 		RateLimit:      defaultRateLimit,
+		GrpcEnabled:    defaultGrpcEnabled,
 	}
 
 	config.overrideConfigFromJSONs(fileConf)

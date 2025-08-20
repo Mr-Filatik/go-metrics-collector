@@ -17,6 +17,7 @@ type configFlags struct {
 	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	grpcEnabled          bool   // включать ли поддержку gRPC
 	configPathIsValue    bool
 	connStringIsValue    bool
 	cryptoKeyPathIsValue bool
@@ -26,6 +27,7 @@ type configFlags struct {
 	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
+	grpcEnabledIsValue   bool
 }
 
 // getFlagsConfig получает конфиг из указанных аргументов.
@@ -42,6 +44,7 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	argT := fs.String("t", "", "Trusted subnet")
 	argI := fs.Int64("i", 0, "Interval in seconds to save data")
 	argR := fs.Bool("r", false, "Loading data when the application starts")
+	argG := fs.Bool("g", false, "gRPC enabled")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, fmt.Errorf("parse argument %w", err)
@@ -86,6 +89,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	if argR != nil && *argR {
 		config.restore = *argR
 		config.restoreIsValue = true
+	}
+	if argG != nil {
+		config.grpcEnabled = *argG
+		config.grpcEnabledIsValue = true
 	}
 
 	return config, nil
@@ -132,5 +139,8 @@ func (c *Config) overrideConfigFromFlags(conf *configFlags) {
 	}
 	if conf.restoreIsValue {
 		c.Restore = conf.restore
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

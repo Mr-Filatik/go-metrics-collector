@@ -14,6 +14,7 @@ type configEnvs struct {
 	pollInterval          int64  // интервал опроса (в секундах)
 	reportInterval        int64  // интервал отправки данных (в секундах)
 	rateLimit             int64  // лимит запросов для агента
+	grpcEnabled           bool   // включать ли поддержку gRPC
 	configPathIsValue     bool
 	cryptoKeyPathIsValue  bool
 	hashKeyIsValue        bool
@@ -21,6 +22,7 @@ type configEnvs struct {
 	pollIntervalIsValue   bool
 	reportIntervalIsValue bool
 	rateLimitIsValue      bool
+	grpcEnabledIsValue    bool
 }
 
 // envReader — интерфейс для чтения переменных окружения.
@@ -78,6 +80,14 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 		}
 	}
 
+	envGrpcEnabled, ok := getenv("GRPC_ENABLED")
+	if ok && envGrpcEnabled != "" {
+		if val, err := strconv.ParseBool(envGrpcEnabled); err == nil {
+			config.grpcEnabled = val
+			config.grpcEnabledIsValue = true
+		}
+	}
+
 	return config
 }
 
@@ -112,5 +122,8 @@ func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
 	}
 	if conf.rateLimitIsValue {
 		c.RateLimit = conf.rateLimit
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

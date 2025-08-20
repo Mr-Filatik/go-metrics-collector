@@ -15,6 +15,7 @@ type configFlags struct {
 	pollInterval          int64  // интервал опроса (в секундах)
 	reportInterval        int64  // интервал отправки данных (в секундах)
 	rateLimit             int64  // лимит запросов для агента
+	grpcEnabled           bool   // включать ли поддержку gRPC
 	configPathIsValue     bool
 	cryptoKeyPathIsValue  bool
 	hashKeyIsValue        bool
@@ -22,6 +23,7 @@ type configFlags struct {
 	pollIntervalIsValue   bool
 	reportIntervalIsValue bool
 	rateLimitIsValue      bool
+	grpcEnabledIsValue    bool
 }
 
 // getFlagsConfig получает конфиг из указанных аргументов.
@@ -36,6 +38,7 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	argP := fs.Int64("p", 0, "Poll interval")
 	argR := fs.Int64("r", 0, "Report interval")
 	argL := fs.Int64("l", 0, "Rate limit")
+	argG := fs.Bool("g", false, "gRPC enabled")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, fmt.Errorf("parse argument %w", err)
@@ -72,6 +75,10 @@ func getFlagsConfig(fs *flag.FlagSet, args []string) (*configFlags, error) {
 	if argL != nil && *argL != 0 {
 		config.rateLimit = *argL
 		config.rateLimitIsValue = true
+	}
+	if argG != nil {
+		config.grpcEnabled = *argG
+		config.grpcEnabledIsValue = true
 	}
 
 	return config, nil
@@ -110,5 +117,8 @@ func (c *Config) overrideConfigFromFlags(conf *configFlags) {
 	}
 	if conf.rateLimitIsValue {
 		c.RateLimit = conf.rateLimit
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }

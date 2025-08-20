@@ -71,16 +71,18 @@ func main() {
 	mainClient = client.NewRestyClient(clientConfig, log)
 
 	// Создание gRPC клиента
-	gclientConfig := &client.GrpcClientConfig{
-		URL:     conf.ServerAddress,
-		XRealIP: realIP,
-		HashKey: conf.HashKey,
+	if conf.GrpcEnabled {
+		addConfig := &client.GrpcClientConfig{
+			URL:     conf.ServerAddress,
+			XRealIP: realIP,
+			HashKey: conf.HashKey,
+		}
+		addClient := client.NewGrpcClient(addConfig, log)
+
+		mainClient = client.NewAllClient(mainClient, addClient)
 	}
-	gmainClient := client.NewGrpcClient(gclientConfig, log)
 
-	allClient := client.NewAllClient(mainClient, gmainClient)
-
-	startErr := allClient.Start(exitCtx)
+	startErr := mainClient.Start(exitCtx)
 	if startErr != nil {
 		log.Error("Start client error", startErr)
 		return
@@ -93,7 +95,7 @@ func main() {
 		metrics,
 		conf.ReportInterval,
 		conf.RateLimit,
-		allClient,
+		mainClient,
 		log)
 
 	// Ожидание сигнала остановки

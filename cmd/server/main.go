@@ -78,7 +78,7 @@ func main() {
 
 	var mainServer server.Server
 
-	// Создание HTTP сервера
+	// Создание и запуск HTTP сервера
 	servConf := &server.HTTPServerConfig{
 		Address:       conf.ServerAddress,
 		Service:       srvc,
@@ -88,27 +88,30 @@ func main() {
 	}
 	mainServer = server.NewHTTPServer(exitCtx, servConf, log)
 
-	// Создание gRPC сервера
-	grpcConf := &server.GrpcServerConfig{
-		Address:       conf.ServerAddress,
-		Service:       srvc,
-		HashKey:       conf.HashKey,
-		TrustedSubnet: conf.TrustedSubnet,
-		PrivateRsaKey: key,
-	}
-	grpcServer := server.NewGrpcServer(exitCtx, grpcConf, log)
-
-	// Запуск HTTP сервера
 	startErr := mainServer.Start(exitCtx)
 	if startErr != nil {
 		log.Error("Server starting error.", startErr)
 		return
 	}
 
-	gStartErr := grpcServer.Start(exitCtx)
-	if gStartErr != nil {
-		log.Error("Server starting error.", gStartErr)
-		return
+	// Создание и запуск gRPC сервера
+	var grpcServer *server.GrpcServer
+
+	if conf.GrpcEnabled {
+		grpcConf := &server.GrpcServerConfig{
+			Address:       conf.ServerAddress,
+			Service:       srvc,
+			HashKey:       conf.HashKey,
+			TrustedSubnet: conf.TrustedSubnet,
+			PrivateRsaKey: key,
+		}
+		grpcServer = server.NewGrpcServer(exitCtx, grpcConf, log)
+
+		gStartErr := grpcServer.Start(exitCtx)
+		if gStartErr != nil {
+			log.Error("Server starting error.", gStartErr)
+			return
+		}
 	}
 
 	// Ожидание сигнала остановки
@@ -121,9 +124,11 @@ func main() {
 	defer cansel()
 
 	go func() {
-		gshutdownErr := grpcServer.Shutdown(shutdownCtx)
-		if gshutdownErr != nil {
-			log.Error("Shutdown GRPCserver error", gshutdownErr)
+		if conf.GrpcEnabled {
+			gshutdownErr := grpcServer.Shutdown(shutdownCtx)
+			if gshutdownErr != nil {
+				log.Error("Shutdown GRPCserver error", gshutdownErr)
+			}
 		}
 	}()
 
@@ -135,12 +140,15 @@ func main() {
 	}()
 
 	<-shutdownCtx.Done()
-	closeErr := grpcServer.Close()
-	if closeErr != nil {
-		log.Error("Close server error", closeErr)
+
+	if conf.GrpcEnabled {
+		closeErr := grpcServer.Close()
+		if closeErr != nil {
+			log.Error("Close server error", closeErr)
+		}
 	}
 
-	closeErr = mainServer.Close()
+	closeErr := mainServer.Close()
 	if closeErr != nil {
 		log.Error("Close server error", closeErr)
 	}

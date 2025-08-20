@@ -16,6 +16,7 @@ type configEnvs struct {
 	trustedSubnet        string // разрешённые подсети
 	storeInterval        int64  // интервал сохранения данных в хранилище (в секундах)
 	restore              bool   // флаг, указывающий загружать ли данные из хранилища при старте приложения
+	grpcEnabled          bool   // включать ли поддержку gRPC
 	configPathIsValue    bool
 	connStringIsValue    bool
 	cryptoKeyPathIsValue bool
@@ -25,6 +26,7 @@ type configEnvs struct {
 	trustedSubnetIsValue bool
 	storeIntervalIsValue bool
 	restoreIsValue       bool
+	grpcEnabledIsValue   bool
 }
 
 // envReader — интерфейс для чтения переменных окружения.
@@ -92,6 +94,14 @@ func getEnvsConfig(getenv envReader) *configEnvs {
 		}
 	}
 
+	envGrpcEnabled, ok := getenv("GRPC_ENABLED")
+	if ok && envGrpcEnabled != "" {
+		if val, err := strconv.ParseBool(envGrpcEnabled); err == nil {
+			config.grpcEnabled = val
+			config.grpcEnabledIsValue = true
+		}
+	}
+
 	return config
 }
 
@@ -134,5 +144,8 @@ func (c *Config) overrideConfigFromEnvs(conf *configEnvs) {
 	}
 	if conf.restoreIsValue {
 		c.Restore = conf.restore
+	}
+	if conf.grpcEnabledIsValue {
+		c.GrpcEnabled = conf.grpcEnabled
 	}
 }
