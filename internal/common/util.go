@@ -62,7 +62,7 @@ func HashValidateStrings(hash1 string, hash2 string) bool {
 
 const portPrefix = 10000
 
-// ChangePortForGRPC увеличивает порт на 10000
+// ChangePortForGRPC увеличивает порт на 10000.
 func ChangePortForGRPC(address string) (string, error) {
 	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
 		address = "http://" + address

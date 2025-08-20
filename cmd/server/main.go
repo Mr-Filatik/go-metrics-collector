@@ -35,6 +35,7 @@ const (
 
 func main() {
 	log := logger.New(logger.LevelDebug)
+	defer log.Close()
 
 	log.Info(fmt.Sprintf("Build version: %v", buildVersion))
 	log.Info(fmt.Sprintf("Build date: %v", buildDate))
@@ -133,19 +134,16 @@ func main() {
 		}
 	}()
 
-	select {
-	case <-shutdownCtx.Done():
-		closeErr := grpcServer.Close()
-		if closeErr != nil {
-			log.Error("Close server error", closeErr)
-		}
+	<-shutdownCtx.Done()
+	closeErr := grpcServer.Close()
+	if closeErr != nil {
+		log.Error("Close server error", closeErr)
+	}
 
-		closeErr = mainServer.Close()
-		if closeErr != nil {
-			log.Error("Close server error", closeErr)
-		}
+	closeErr = mainServer.Close()
+	if closeErr != nil {
+		log.Error("Close server error", closeErr)
 	}
 
 	log.Info("Application shutdown is successfull")
-	log.Close()
 }

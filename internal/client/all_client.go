@@ -12,9 +12,9 @@ import (
 // AllClient - клиент для отправки запросов к серверу.
 // Совмещает в себе несколько клиентов, используя при каждом запросе разные.
 type AllClient struct {
+	clients []Client
 	mu      sync.Mutex
 	current int
-	clients []Client
 }
 
 var _ Client = (*AllClient)(nil)
