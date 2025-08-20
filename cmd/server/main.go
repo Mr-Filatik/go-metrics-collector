@@ -35,7 +35,6 @@ const (
 
 func main() {
 	log := logger.New(logger.LevelDebug)
-	defer log.Close()
 
 	log.Info(fmt.Sprintf("Build version: %v", buildVersion))
 	log.Info(fmt.Sprintf("Build date: %v", buildDate))
@@ -89,19 +88,25 @@ func main() {
 	mainServer = server.NewHTTPServer(exitCtx, servConf, log)
 
 	// Создание gRPC сервера
-	// servConf := &server.GrpcServerConfig{
-	// 	Address:       conf.ServerAddress,
-	// 	Service:       srvc,
-	// 	HashKey:       conf.HashKey,
-	// 	TrustedSubnet: conf.TrustedSubnet,
-	// 	PrivateRsaKey: key,
-	// }
-	// mainServer = server.NewGrpcServer(exitCtx, servConf, log)
+	grpcConf := &server.GrpcServerConfig{
+		Address:       conf.ServerAddress,
+		Service:       srvc,
+		HashKey:       conf.HashKey,
+		TrustedSubnet: conf.TrustedSubnet,
+		PrivateRsaKey: key,
+	}
+	grpcServer := server.NewGrpcServer(exitCtx, grpcConf, log)
 
-	// Запуск сервера
+	// Запуск HTTP сервера
 	startErr := mainServer.Start(exitCtx)
 	if startErr != nil {
 		log.Error("Server starting error.", startErr)
+		return
+	}
+
+	gStartErr := grpcServer.Start(exitCtx)
+	if gStartErr != nil {
+		log.Error("Server starting error.", gStartErr)
 		return
 	}
 
@@ -114,14 +119,33 @@ func main() {
 	shutdownCtx, cansel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cansel()
 
-	shutdownErr := mainServer.Shutdown(shutdownCtx)
-	if shutdownErr != nil {
-		log.Error("Shutdown server error", shutdownErr)
-		closeErr := mainServer.Close()
+	go func() {
+		gshutdownErr := grpcServer.Shutdown(shutdownCtx)
+		if gshutdownErr != nil {
+			log.Error("Shutdown GRPCserver error", gshutdownErr)
+		}
+	}()
+
+	go func() {
+		shutdownErr := mainServer.Shutdown(shutdownCtx)
+		if shutdownErr != nil {
+			log.Error("Shutdown server error", shutdownErr)
+		}
+	}()
+
+	select {
+	case <-shutdownCtx.Done():
+		closeErr := grpcServer.Close()
+		if closeErr != nil {
+			log.Error("Close server error", closeErr)
+		}
+
+		closeErr = mainServer.Close()
 		if closeErr != nil {
 			log.Error("Close server error", closeErr)
 		}
 	}
 
 	log.Info("Application shutdown is successfull")
+	log.Close()
 }

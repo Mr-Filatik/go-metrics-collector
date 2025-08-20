@@ -51,7 +51,10 @@ func NewRestyClient(config *RestyClientConfig, l logger.Logger) *RestyClient {
 }
 
 func (c *RestyClient) Start(_ context.Context) error {
-	c.log.Info("Start RestyClient...")
+	c.log.Info(
+		"Start RestyClient...",
+		"address", c.url,
+	)
 	c.restyClient = resty.New()
 	c.registerMiddlewares(c.hashKey, c.publicKey)
 	c.log.Info("Start RestyClient is successfull")

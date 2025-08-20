@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 
+	"github.com/Mr-Filatik/go-metrics-collector/internal/common"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/entity"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/logger"
 	"github.com/Mr-Filatik/go-metrics-collector/internal/server/interceptor"
@@ -18,6 +19,7 @@ import (
 // Использует service для бизнес-логики и logger для логирования.
 type GrpcServer struct {
 	proto.UnimplementedMetricsServiceServer
+	serv    *grpc.Server
 	service *service.Service // сервис с основной логикой
 	// conveyor    *middleware.Conveyor // конвейер для middleware
 	log           logger.Logger // логгер
@@ -52,6 +54,10 @@ func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig, log logger.Logge
 		hashKey:       conf.HashKey,
 	}
 
+	if adr, err := common.ChangePortForGRPC(conf.Address); err == nil {
+		srv.address = adr
+	}
+
 	log.Info("GrpcServer create is successfull")
 	return srv
 }
@@ -59,10 +65,10 @@ func NewGrpcServer(ctx context.Context, conf *GrpcServerConfig, log logger.Logge
 func (s *GrpcServer) Start(ctx context.Context) error {
 	s.log.Info(
 		"GrpcServer starting...",
-		"address", ":18080",
+		"address", s.address,
 	)
 
-	lis, err := net.Listen("tcp", ":18080")
+	lis, err := net.Listen("tcp", s.address)
 	if err != nil {
 		s.log.Error("Error listen in gRPC server", err)
 	}
@@ -75,6 +81,7 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 		conv.HashingInterceptor,
 	))
 	grpcServ := grpc.NewServer(opts...)
+	s.serv = grpcServ
 	proto.RegisterMetricsServiceServer(grpcServ, s)
 	go func() {
 		if err := grpcServ.Serve(lis); err != nil {
@@ -87,10 +94,16 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 }
 
 func (s *GrpcServer) Shutdown(ctx context.Context) error {
+	s.log.Info("GRPCServer shutdown starting...")
+	s.serv.GracefulStop()
+	s.log.Info("GRPCServer shutdown is successfull")
 	return nil
 }
 
 func (s *GrpcServer) Close() error {
+	s.log.Info("GRPCServer close starting...")
+	s.serv.Stop()
+	s.log.Info("GRPCServer close is successfull")
 	return nil
 }
 

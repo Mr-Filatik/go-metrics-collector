@@ -45,15 +45,22 @@ func NewGrpcClient(config *GrpcClientConfig, l logger.Logger) *GrpcClient {
 		hashKey: config.HashKey,
 	}
 
+	if adr, err := common.ChangePortForGRPC(config.URL); err == nil {
+		client.url = adr
+	}
+
 	return client
 }
 
 func (c *GrpcClient) Start(_ context.Context) error {
-	c.log.Info("Start GrpcClient...")
+	c.log.Info(
+		"Start GrpcClient...",
+		"address", c.url,
+	)
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, connErr := grpc.NewClient(":18080", opts...) // client.url
+	conn, connErr := grpc.NewClient(c.url, opts...)
 	if connErr != nil {
 		return fmt.Errorf("start GrpcClient error: %w", connErr)
 	}

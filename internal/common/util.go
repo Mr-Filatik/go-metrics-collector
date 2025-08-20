@@ -8,6 +8,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
 // CompressBytes выполняет сжатие []byte в формате GZIP.
@@ -54,4 +58,32 @@ func HashBytesToString(data []byte, key string) (string, error) {
 // HashValidateStrings сравнивает два хэша.
 func HashValidateStrings(hash1 string, hash2 string) bool {
 	return hmac.Equal([]byte(hash1), []byte(hash2))
+}
+
+const portPrefix = 10000
+
+// ChangePortForGRPC увеличивает порт на 10000
+func ChangePortForGRPC(address string) (string, error) {
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		address = "http://" + address
+	}
+
+	parsedURL, err := url.Parse(address)
+	if err != nil {
+		return "", fmt.Errorf("parse string error: %w", err)
+	}
+
+	host, portStr, err := net.SplitHostPort(parsedURL.Host)
+	if err != nil {
+		return "", fmt.Errorf("error format host:port: %w", err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", fmt.Errorf("port in not number: %w", err)
+	}
+
+	newPort := portPrefix + port
+
+	return fmt.Sprintf("%s:%d", host, newPort), nil
 }
